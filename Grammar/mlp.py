@@ -169,6 +169,8 @@ def main(mode):
     num_outputs = 10
     lr = 0.2
 
+    use_cuda = torch.cuda.is_available()
+    device = torch.device('cuda' if use_cuda else 'cpu')
     # ------------------------ dataset generator----------------------------------
     mnist_train, mnist_test = load_dataset()
 
