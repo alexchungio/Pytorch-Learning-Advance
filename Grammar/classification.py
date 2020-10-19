@@ -194,7 +194,7 @@ def main(mode):
         nn.init.constant_(net.linear.bias, val=0.)
 
         # loss
-        loss = nn.CrossEntropyLoss()
+        loss = nn.CrossEntropyLoss()  # contain softmax operation
 
         # optimizer
         optimizer = optim.SGD(net.parameters(), lr=lr)
