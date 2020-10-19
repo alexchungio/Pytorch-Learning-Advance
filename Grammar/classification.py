@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 import time
 import numpy as np
 from collections import OrderedDict
-import Torch_Grammar.utils as d2l
+import Grammar.utils as d2l
 
 
 # Module ModuleList Sequential
@@ -29,7 +29,7 @@ import Torch_Grammar.utils as d2l
 # Sequential  order container
 
 
-model_path = '../outputs/mnist.pt'
+model_path = '../Outputs/mnist.pt'
 
 def load_dataset():
     mnist_train = torchvision.datasets.FashionMNIST(root='../Datasets/FashionMNIST', train=True, download=True,
