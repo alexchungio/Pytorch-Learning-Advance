@@ -10,7 +10,7 @@
 # @ Software   : PyCharm
 #-------------------------------------------------------
 
-import sys
+import os
 import torch
 from torch import nn
 import torch.optim as optim
@@ -27,6 +27,9 @@ import Torch_Grammar.utils as d2l
 # Module ModuleList Sequential
 # ModuleList  container
 # Sequential  order container
+
+
+model_path = '../outputs/mnist.pt'
 
 def load_dataset():
     mnist_train = torchvision.datasets.FashionMNIST(root='../Datasets/FashionMNIST', train=True, download=True,
@@ -118,8 +121,42 @@ def train(net, train_generator, test_generator, loss, num_epochs, batch_size, pa
               format(epoch + 1, train_loss, train_acc, test_acc))
 
 
+def save_model(net, model_path, complete_model=None):
 
-def main():
+    # os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    #
+    # x = torch.tensor(3, dtype=torch.float)
+    # y = torch.tensor(4, dtype=torch.float)
+    #
+    # xy_list = [x, y]
+    # xy_dict = {'x': x, 'y': y}
+    # # torch.save(x, model_path)
+    # # torch.save(xy_list, model_path)
+    # torch.save(xy_dict,  model_path)
+    if complete_model is None:
+        torch.save(net.state_dict(), model_path)
+    else:
+        torch.save(net, model_path)
+    print('Successful save model...')
+
+
+
+def load_model(net=None, model_path=None, complete_model=None):
+
+    # x = torch.load(model_path)
+
+
+    if complete_model is None:
+        net.load_state_dict(torch.load(model_path))
+        model = None
+    else:
+        model = torch.load(model_path)
+
+    print('Successful load model...')
+    return model
+
+
+def main(mode):
 
     num_epochs = 10
     batch_size = 128
@@ -128,6 +165,8 @@ def main():
     num_inputs = 28*28
     num_outputs = 10
     lr = 0.1
+
+
 
     # ------------------------ dataset generator----------------------------------
     mnist_train, mnist_test = load_dataset()
@@ -148,18 +187,34 @@ def main():
          ])
     )
 
-    # init weight and bias
-    nn.init.normal_(net.linear.weight, mean=0., std=0.01)
-    nn.init.constant_(net.linear.bias, val=0.)
+    if mode == 'train':
 
-    # loss
-    loss = nn.CrossEntropyLoss()
+        # init weight and bias
+        nn.init.normal_(net.linear.weight, mean=0., std=0.01)
+        nn.init.constant_(net.linear.bias, val=0.)
 
-    # optimizer
-    optimizer = optim.SGD(net.parameters(), lr=lr)
+        # loss
+        loss = nn.CrossEntropyLoss()
 
-    train(net, train_generator, test_generator, loss, num_epochs, batch_size, optimizer=optimizer)
+        # optimizer
+        optimizer = optim.SGD(net.parameters(), lr=lr)
 
+        train(net, train_generator, test_generator, loss, num_epochs, batch_size, optimizer=optimizer)
+
+        # save model
+        save_model(net, model_path)
+    elif mode == 'test':
+        load_model(net, model_path)
+
+        X, y = iter(test_generator).next()
+
+        true_labels = get_fashion_mnist_labels(y.numpy())
+        pred_labels = get_fashion_mnist_labels(net(X).argmax(dim=1).numpy())
+        titles = [true + '\n' + pred for true, pred in zip(true_labels, pred_labels)]
+
+        show_fashion_mnist(X[0:9], titles[0:9])
 
 if __name__ == "__main__":
-    main()
+    # main(mode='train')
+    main(mode='test')
+
