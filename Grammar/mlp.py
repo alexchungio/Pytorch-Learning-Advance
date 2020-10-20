@@ -31,6 +31,10 @@ import Grammar.utils as d2l
 
 model_path = '../Outputs/mlp/mnist.pt'
 
+use_cuda = True
+
+device = torch.device("cuda" if use_cuda else "cpu")
+
 def load_dataset():
     mnist_train = torchvision.datasets.FashionMNIST(root='../Datasets/FashionMNIST', train=True, download=True,
                                                     transform=transforms.ToTensor())
@@ -66,6 +70,7 @@ class Flatten(nn.Module):
 def evaluate_accuracy(data_generator, net):
     acc_sum, num = 0, 0
     for x, y in data_generator:
+        x, y = x.to(device), y.to(device)
         pred = net(x)
         acc_sum += (pred.argmax(dim=1) == y).float().sum().item()
         num += x.shape[0]
@@ -77,6 +82,7 @@ def train(net, train_generator, test_generator, loss, num_epochs, batch_size, pa
         train_acc_sum, train_num = 0., 0
         train_loss_sum = 0.0
         for x, y in train_generator:
+            x, y = x.to(device), y.to(device)
             y_pred = net(x)
 
             # computer loss
@@ -126,7 +132,6 @@ def save_model(model, model_path, complete_model=None):
     else:
         torch.save(model, model_path)
     print('Successful save model...')
-
 
 
 def load_model(model=None, model_path=None, complete_model=None):
@@ -208,6 +213,7 @@ def main(mode):
         # change model mode to train => drop_prob = drop_prob
         # **********************************************************
         model.train()
+        model.to(device)
         loss = nn.CrossEntropyLoss()
 
         optimizer = torch.optim.SGD(model.parameters(), lr=lr)
