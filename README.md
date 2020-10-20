@@ -8,7 +8,7 @@ pytorch learning advance
 * [mlp](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/mlp.py)
 * [under-fitting vs over-fitting](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/under_over_fitting.ipynb)
 * [weight decay](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/weight_decay.ipynb)
-
+* [dropout](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/dropout.ipynb)
 ## TODO
 
 ## Reference
