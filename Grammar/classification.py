@@ -28,8 +28,7 @@ import Grammar.utils as d2l
 # ModuleList  container
 # Sequential  order container
 
-
-model_path = '../Outputs/mnist.pt'
+model_path = '../Outputs/classification/mnist.pt'
 
 def load_dataset():
     mnist_train = torchvision.datasets.FashionMNIST(root='../Datasets/FashionMNIST', train=True, download=True,
@@ -123,7 +122,7 @@ def train(net, train_generator, test_generator, loss, num_epochs, batch_size, pa
 
 def save_model(net, model_path, complete_model=None):
 
-    # os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
     #
     # x = torch.tensor(3, dtype=torch.float)
     # y = torch.tensor(4, dtype=torch.float)
@@ -161,7 +160,6 @@ def main(mode):
     num_epochs = 10
     batch_size = 128
     num_workers = 4
-
     num_inputs = 28*28
     num_outputs = 10
     lr = 0.1
@@ -215,6 +213,6 @@ def main(mode):
         show_fashion_mnist(X[0:9], titles[0:9])
 
 if __name__ == "__main__":
-    # main(mode='train')
+    main(mode='train')
     main(mode='test')
 

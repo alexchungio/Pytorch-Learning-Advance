@@ -19,9 +19,8 @@ import torch.utils.data as data
 import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-import time
-import numpy as np
-from collections import OrderedDict
+import torch.nn.functional as F
+
 import Grammar.utils as d2l
 
 
@@ -110,7 +109,7 @@ def train(net, train_generator, test_generator, loss, num_epochs, batch_size, pa
               format(epoch + 1, train_loss, train_acc, test_acc))
 
 
-def save_model(net, model_path, complete_model=None):
+def save_model(model, model_path, complete_model=None):
 
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     #
@@ -123,20 +122,20 @@ def save_model(net, model_path, complete_model=None):
     # # torch.save(xy_list, model_path)
     # torch.save(xy_dict,  model_path)
     if complete_model is None:
-        torch.save(net.state_dict(), model_path)
+        torch.save(model.state_dict(), model_path)
     else:
-        torch.save(net, model_path)
+        torch.save(model, model_path)
     print('Successful save model...')
 
 
 
-def load_model(net=None, model_path=None, complete_model=None):
+def load_model(model=None, model_path=None, complete_model=None):
 
     # x = torch.load(model_path)
 
 
     if complete_model is None:
-        net.load_state_dict(torch.load(model_path))
+        model.load_state_dict(torch.load(model_path))
         model = None
     else:
         model = torch.load(model_path)
@@ -150,12 +149,18 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
         self.flatten = Flatten()
         self.linears = nn.ModuleList([nn.Linear(inp, out) for inp, out in zip(num_dim[:-1], num_dim[1:])])
+        self.dropout1 = nn.Dropout(0.2)
+        self.dropout2 = nn.Dropout(0.5)
+        # self.relu1 = nn.ReLU()
+        # self.relu2 = nn.ReLU()
 
     def forward(self, x):
         x = self.flatten(x)
-        for linear in self.linears:
-            x = linear(x)
-
+        x = self.linears[0](x)
+        x = F.relu(x)
+        x = self.linears[1](x)
+        x = F.relu(x)
+        x = self.linears[2](x)
         return x
 
 def main(mode):
@@ -165,7 +170,8 @@ def main(mode):
     num_workers = 4
 
     num_inputs = 28 * 28
-    num_hiddens = 256
+    num_hidden1 = 256
+    num_hidden2 = 126
     num_outputs = 10
     lr = 0.2
 
@@ -189,32 +195,40 @@ def main(mode):
     #      ])
     # )
 
-    net = MLP([num_inputs, num_hiddens, num_outputs])
+    model = MLP([num_inputs, num_hidden1, num_hidden2, num_outputs])
     # print(net)
     # initial parameter
-    for param in net.parameters():
+    for param in model.parameters():
         nn.init.normal_(param, mean=0, std=0.01)
 
     if mode == 'train':
+        # **********************************************************
+        # change model mode to train => drop_prob = drop_prob
+        # **********************************************************
+        model.train()
         loss = nn.CrossEntropyLoss()
 
-        optimizer = torch.optim.SGD(net.parameters(), lr=lr)
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr)
 
-        train(net, train_generator, test_generator, loss, num_epochs, batch_size, optimizer=optimizer)
+        train(model, train_generator, test_generator, loss, num_epochs, batch_size, optimizer=optimizer)
 
         # save model
-        save_model(net, model_path)
+        save_model(model, model_path)
 
     elif mode == 'test':
-        load_model(net, model_path)
+        # **********************************************************
+        # change model mode to eval => drop_prob = 0.0
+        # **********************************************************
+        model.eval()
+        load_model(model, model_path)
 
-        X, y = iter(test_generator).next()
+        x, y = iter(test_generator).next()
 
         true_labels = get_fashion_mnist_labels(y.numpy())
-        pred_labels = get_fashion_mnist_labels(net(X).argmax(dim=1).numpy())
+        pred_labels = get_fashion_mnist_labels(model(x).argmax(dim=1).numpy())
         titles = [true + '\n' + pred for true, pred in zip(true_labels, pred_labels)]
 
-        show_fashion_mnist(X[0:9], titles[0:9])
+        show_fashion_mnist(x[0:9], titles[0:9])
 
 if __name__ == "__main__":
     main('train')
