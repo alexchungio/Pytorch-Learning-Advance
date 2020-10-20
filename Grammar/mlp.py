@@ -158,8 +158,10 @@ class MLP(nn.Module):
         x = self.flatten(x)
         x = self.linears[0](x)
         x = F.relu(x)
+        x = self.dropout1(x)
         x = self.linears[1](x)
         x = F.relu(x)
+        x = self.dropout2(x)
         x = self.linears[2](x)
         return x
 
