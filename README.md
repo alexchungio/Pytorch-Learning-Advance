@@ -10,6 +10,7 @@ pytorch learning advance
 * [weight decay](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/weight_decay.ipynb)
 * [dropout](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/dropout.ipynb)
 * [parameter-operation](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/parameters.ipynb)
+* [custom-layer](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/custom_layer.ipynb)
 
 ## TODO
 
