@@ -9,7 +9,7 @@
 # @ Time       : 2020/10/22 下午4:01
 # @ Software   : PyCharm
 #-------------------------------------------------------
-
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,7 +19,6 @@ import torch.utils.data as data
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 import Grammar.utils as d2l
-
 
 
 def load_dataset(batch_size, size=None, num_workers=4):
@@ -50,10 +49,12 @@ class LeNet(nn.Module):
         # Conv2d: in_channels, out_channels, kernel_size, stride=1, padding=0
         # 1,32,32
         self.conv1 = nn.Conv2d(1, 6, kernel_size=5)  # 6,28 ,28
+        self.batch_norm1 = nn.BatchNorm2d(num_features=6)
         self.sigmoid1 = nn.Sigmoid()
         self.maxpool1 = nn.MaxPool2d(2, 2)  # 6,14,14
 
         self.conv2 = nn.Conv2d(6, 16, kernel_size=5)  # 16,10,10
+        self.batch_norm2 = nn.BatchNorm2d(num_features=16)
         self.sigmoid2 = nn.Sigmoid()
         self.maxpool2 = nn.MaxPool2d(2, 2)  # 16,5,5
 
@@ -62,10 +63,12 @@ class LeNet(nn.Module):
         # Linear: in_features, out_features, bias=True
         # fc1
         self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.batch_norm3 = nn.BatchNorm1d(num_features=120)
         self.sigmoid3 = nn.Sigmoid()
 
         # fc2
         self.fc2 = nn.Linear(120, 84)
+        self.batch_norm4 = nn.BatchNorm1d(num_features=84)
         self.sigmoid4 = nn.Sigmoid()
 
         # fc3
@@ -73,19 +76,23 @@ class LeNet(nn.Module):
 
     def forward(self, x):
         x = self.conv1(x)
+        x = self.batch_norm1(x)
         x = self.sigmoid1(x)
         x = self.maxpool1(x)
 
         x = self.conv2(x)
+        x = self.batch_norm2(x)
         x = self.sigmoid2(x)
         x = self.maxpool2(x)
 
         x = torch.flatten(x, 1)
 
         x = self.fc1(x)
+        x = self.batch_norm3(x)
         x = self.sigmoid3(x)
 
         x = self.fc2(x)
+        x = self.batch_norm4(x)
         x = self.sigmoid4(x)
 
         x = self.fc3(x)
@@ -143,33 +150,24 @@ def train(model, train_loader, loss, optimizer, epoch, device=None):
 
 
 def main():
-    # config
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
-
-    num_epochs = 10
+    num_epochs = 20
     batch_size = 256
-    lr, gamma = 1.0, 0.9
+    lr, gamma = 0.1, 0.9
     model = LeNet().to(device)
     loss = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(params=model.parameters(), lr=lr, momentum=0.8)  # SGDM
-    # optimizer = optim.SGD(params=model.parameters(), lr=lr, momentum=0.8)
+    optimizer = optim.SGD(params=model.parameters(), lr=lr, momentum=0.9)  # SGDM
+
+    # optimizer = optim.Adam(params=model.parameters(), lr=lr) # Adam
     scheduler = StepLR(optimizer, step_size=2, gamma=gamma)
 
-    train_loader, test_loader = load_dataset(batch_size, (32, 32))
+    train_loader, test_loader = load_dataset(batch_size, size=(32, 32))
 
-    # train_generator, test_generator = load_dataset(batch_size=256, size=(32, 32))
-    # for x, y in train_generator:
-    #     print(x.shape, y.shape)
-    #     break
-    A
     for epoch in range(num_epochs):
-        train(model, train_loader, loss, optimizer, epoch, device)
-        test(model, test_loader, epoch, device=None)
+        train(model, train_loader, loss, optimizer, epoch + 1, device)
+        test(model, test_loader, epoch + 1, device=device)
         scheduler.step(epoch)
-        # print('epoch {} optimizer learning rate {}'.format(epoch+1, optimizer.param_groups[0]['lr']))
-        print('epoch {} scheduler learning rate {}'.format(epoch+1, scheduler.get_lr()))
-
 
 if __name__ == "__main__":
     main()
