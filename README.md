@@ -17,6 +17,7 @@ pytorch learning advance
 ### CNN
 * [conv2d](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/conv2d.ipynb)
 * [conv2d-utils](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/conv2d_utils.ipynb)
+* [batch-norm](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/batch_norm.ipynb)
 
 ### RNN
 
