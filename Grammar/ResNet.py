@@ -38,7 +38,6 @@ class BasicBlock(nn.Module):
         super(BasicBlock, self).__init__()
 
 
-
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
 
@@ -130,6 +129,18 @@ class Bottleneck(nn.Module):
         return out
 
 
+
+class Flatten(nn.Module):
+    def __init__(self):
+        super(Flatten, self).__init__()
+
+    def forward(self, x):
+
+        return x.view(x.shape[0], -1)
+
+
+
+
 class ResNet18(nn.ModuleList):
 
     def __init__(self, num_classes):
@@ -166,6 +177,7 @@ class ResNet18(nn.ModuleList):
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        # self.flatten = Flatten()
         self.fc = nn.Linear(512, num_classes)
 
     def forward(self, x):
