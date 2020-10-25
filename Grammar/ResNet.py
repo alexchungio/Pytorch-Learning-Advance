@@ -129,7 +129,6 @@ class Bottleneck(nn.Module):
         return out
 
 
-
 class Flatten(nn.Module):
     def __init__(self):
         super(Flatten, self).__init__()
@@ -137,8 +136,6 @@ class Flatten(nn.Module):
     def forward(self, x):
 
         return x.view(x.shape[0], -1)
-
-
 
 
 class ResNet18(nn.ModuleList):
