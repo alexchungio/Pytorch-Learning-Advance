@@ -211,7 +211,24 @@ class RNN(nn.Module):
         return out
 
 
-def train(model, train_loader, sequence_length, input_size, device, loss, optimizer, num_epochs):
+def test(model, test_loader, sequence_length, input_size, epoch, device):
+
+    model.eval()
+    with torch.no_grad():
+        test_acc, num_samples = 0, 0
+
+        for images, labels in test_loader:
+            images = images.reshape(-1, sequence_length, input_size).to(device)
+            labels = labels.to(device)
+
+            pred_y = model(images)
+            test_acc += (pred_y.argmax(dim=1) == labels).float().sum().cpu().item()
+            num_samples += images.shape[0]
+
+        print('Test epoch {} => acc {:.4f}'.
+              format(epoch, test_acc / num_samples))
+
+def train(model, train_loader, sequence_length, input_size, loss, optimizer, epoch, device):
     """
 
     :param model:
@@ -225,31 +242,31 @@ def train(model, train_loader, sequence_length, input_size, device, loss, optimi
     :return:
     """
     model.train()
-    for epoch in range(num_epochs):
-        train_acc, train_loss, num_samples = 0, 0.0, 0
-        num_batch = 0
 
-        for i, (images, labels) in enumerate(train_loader):
-            images = images.reshape(-1, sequence_length, input_size).to(device)
-            labels = labels.to(device)
+    train_acc, train_loss, num_samples = 0, 0.0, 0
+    num_batch = 0
 
-            pred_y = model(images)
-            l = loss(pred_y, labels)
-            # grad clearing
-            optimizer.zero_grad()
-            # computer grad
-            l.backward()
-            # update grad
-            optimizer.step()
+    for images, labels in train_loader:
+        images = images.reshape(-1, sequence_length, input_size).to(device)
+        labels = labels.to(device)
 
-            train_loss += l.cpu().item()
-            train_acc += (pred_y.argmax(dim=1) == labels).float().sum().cpu().item()
+        pred_y = model(images)
+        l = loss(pred_y, labels)
+        # grad clearing
+        optimizer.zero_grad()
+        # computer grad
+        l.backward()
+        # update grad
+        optimizer.step()
 
-            num_samples += images.shape[0]
-            num_batch += 1
+        train_loss += l.cpu().item()
+        train_acc += (pred_y.argmax(dim=1) == labels).float().sum().cpu().item()
 
-        print('Train epoch {} => loss {:.4f}, acc {:.4f}'.
-              format(epoch, train_loss / num_batch, train_acc / num_samples))
+        num_samples += images.shape[0]
+        num_batch += 1
+
+    print('Train epoch {} => loss {:.4f}, acc {:.4f}'.
+          format(epoch, train_loss / num_batch, train_acc / num_samples))
 
 def main():
 
@@ -273,8 +290,11 @@ def main():
     train_loader = data.DataLoader(mnist_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     test_loader = data.DataLoader(mnist_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-    train(model, train_loader, sequence_length, input_size, loss=loss, optimizer=optimizer, device=device, num_epochs=num_epochs)
 
+    for epoch in range(num_epochs):
+        train(model, train_loader, sequence_length, input_size, loss=loss, optimizer=optimizer, device=device,
+              epoch=epoch+1)
+        test(model, test_loader, sequence_length, input_size, epoch+1, device)
 
 
 
