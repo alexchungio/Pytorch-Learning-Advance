@@ -4,7 +4,7 @@ pytorch learning advance
 
 ## Project List
 
-### basic
+### Basic
 * [regression](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/regression.py)
 * [classification](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/classification.py)
 * [mlp](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/mlp.py)
@@ -21,6 +21,10 @@ pytorch learning advance
 * [ResNet](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/ResNet.ipynb)
 
 ### RNN
+* [RNN](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/RNN.ipynb)
+
+### Visualize
+
 
 ## TODO
 
