@@ -88,9 +88,9 @@ class TextTokenizer(object):
             pickle.dump(self.vocab, f)
 
 
-def data_loader_random(corpus_indices, seq_length, time_steps, device=None):
+def data_loader_random(corpus_indices, seq_len, time_steps, device=None):
     num_samples = (len(corpus_indices) - 1) // time_steps
-    epoch_size = num_samples // seq_length
+    epoch_size = num_samples // seq_len
 
     # shuffle sample
     samples_indices = list(range(num_samples))
@@ -98,26 +98,26 @@ def data_loader_random(corpus_indices, seq_length, time_steps, device=None):
 
     # generator data
     for i in range(epoch_size):
-        i = i * seq_length
+        i = i * seq_len
 
-        batch_incices = samples_indices[i: i + seq_length]
+        batch_incices = samples_indices[i: i + seq_len]
         x = [corpus_indices[indices: indices + time_steps] for indices in batch_incices]
         y = [corpus_indices[indices + 1: indices + time_steps + 1] for indices in batch_incices]
 
-        x = torch.tensor(x, dtype=torch.float32).view(seq_length, time_steps)
-        y = torch.tensor(y, dtype=torch.float32).view(seq_length, time_steps)
+        x = torch.tensor(x, dtype=torch.float32).view(seq_len, time_steps)
+        y = torch.tensor(y, dtype=torch.float32).view(seq_len, time_steps)
 
         yield x, y
 
 
-def data_loader_consecutive(corpus_indices, seq_length, time_steps):
+def data_loader_consecutive(corpus_indices, seq_len, time_steps):
 
     data_len = len(corpus_indices)
 
-    seq_size = data_len // seq_length
+    seq_size = data_len // seq_len
 
-    # resize to => (seq_length, seq_size)
-    corpus_indices = np.array(corpus_indices[: seq_size * seq_length], dtype=np.float).reshape((seq_length, -1))
+    # resize to => (seq_len, seq_size)
+    corpus_indices = np.array(corpus_indices[: seq_size * seq_len], dtype=np.float).reshape((seq_len, -1))
 
     epoch_size = (seq_size - 1) // time_steps
 
@@ -125,7 +125,7 @@ def data_loader_consecutive(corpus_indices, seq_length, time_steps):
     np.random.shuffle(corpus_indices)
 
     # convert to torch tensor
-    torch_indices = torch.tensor(corpus_indices, dtype=torch.float32).view(seq_length, seq_size)
+    torch_indices = torch.tensor(corpus_indices, dtype=torch.float32).view(seq_len, seq_size)
     for i in range(epoch_size):
         i = i * time_steps
         x = torch_indices[:, i: i + time_steps]
@@ -137,6 +137,7 @@ def onehot(X, n_class):
     # X shape: (batch, seq_len), output: seq_len elements of (batch, n_class)
 
     return [F.one_hot(X[:, i].to(torch.int64), n_class).to(dtype=torch.float32, device=device) for i in range(X.shape[1])]
+
 
  # class RNNCell(nn.Module):
     #     def __init__(self, input_size, hidden_size, output_size):
@@ -178,6 +179,15 @@ def onehot(X, n_class):
     #
     #         return outputs, (h, )
 
+def grad_clipping(params, theta, device):
+    norm = torch.tensor([0.0], device=device)
+    for param in params:
+        norm += (param.grad.data ** 2).sum()
+    norm = norm.sqrt().item()
+    if norm > theta:
+        for param in params:
+            param.grad.data *= (theta / norm)
+
 
 class RNNModel(nn.Module):
     def __init__(self, hidden_size, vocab_size, embedding_dim, bidirectional=False):
@@ -190,89 +200,96 @@ class RNNModel(nn.Module):
         self.dense = nn.Linear(self.hidden_size, vocab_size)
         self.state = None
 
-    def forward(self, inputs, state): # inputs: (batch, seq_len)
+    def forward(self, inputs, state): # inputs: (seq_len, time_steps)
 
-
+        # (seq_len, time_steps, embedding_dim)
         x = self.embedding(inputs.long())
+        # (seq_len, time_steps, vocab_size)
         out, self.state = self.rnn(x, state)
-        # 全连接层会首先将Y的形状变成(num_steps * batch_size, num_hiddens)，它的输出
-        # 形状为(num_steps * batch_size, vocab_size)
-        output = self.dense(out.contiguous().view(out.shape[0]*out.shape[1], out.shape[-1]))
+        # (seq_len*time_step, vocab_size)
+        output = self.dense(out.contiguous().view(-1, out.shape[-1]))
         return output, self.state
 
 
 def predict(model, prefix, num_chars, device, index_to_char, char_to_index):
 
-    model.to(device)
-    state = None
-    output = [char_to_index[prefix[0]]] # output会记录prefix加上输出
+    state=None
+    output = [char_to_index[prefix[0]]]
     for t in range(num_chars + len(prefix) - 1):
-        X = torch.tensor([output[-1]], device=device).view(1, 1)
+        # read one char as input
+        x = torch.tensor([output[-1]], device=device).view(1, 1)
         if state is not None:
-            if isinstance(state, tuple): # LSTM, state:(h, c)
+            if isinstance(state, tuple):  # LSTM, state:(h, c)
                 state = (state[0].to(device), state[1].to(device))
             else:
                 state = state.to(device)
 
-        (Y, state) = model(X, state)
+        (y, state) = model(x, state)
         if t < len(prefix) - 1:
             output.append(char_to_index[prefix[t + 1]])
         else:
-            output.append(int(Y.argmax(dim=1).item()))
+            output.append(int(y.argmax(dim=1).item()))
     return ''.join([index_to_char[i] for i in output])
 
 
-def train_and_predict(model, device, corpus_indices, idx_to_char, char_to_idx, num_epochs, num_steps, lr,
-                      clipping_theta, batch_size, pred_period, pred_len, prefixes, ):
+def train_and_predict(model, corpus_indices, sample_model, num_epochs, seq_len, time_steps, lr, clipping_theta,
+                      index_to_char, char_to_index, pred_period, pred_len, prefixes, device):
     loss = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    model.to(device)
-    state = None
+
+
     for epoch in range(num_epochs):
+        state = None  # state
+        if sample_model == 'consecutive':
+            # state = None  # reset state at every epoch
+            data_loader = data_loader_consecutive(corpus_indices, seq_len=seq_len, time_steps=time_steps)
+        else:
+            data_loader = data_loader_random(corpus_indices, seq_len=seq_len, time_steps=time_steps)
+
         l_sum, n, start = 0.0, 0, time.time()
-        data_iter = d2l.data_iter_consecutive(corpus_indices, batch_size, num_steps, device) # 相邻采样
-        for X, Y in data_iter:
-            if state is not None:
-                # 使用detach函数从计算图分离隐藏状态, 这是为了
-                # 使模型参数的梯度计算只依赖一次迭代读取的小批量序列(防止梯度计算开销太大)
-                if isinstance (state, tuple): # LSTM, state:(h, c)
-                    state = (state[0].detach(), state[1].detach())
-                else:
-                    state = state.detach()
+        for x, y in data_loader:
+            x = x.to(device)
+            y = y.to(device)
+            if sample_model == "random":
+                state = None  # reset state at every step
+            else:
+                if state is not None:
+                    # detach state from computer graph to prevent the overhead of gradient compute
+                    if isinstance (state, tuple): # LSTM, state:(h, c)
+                        state = (state[0].detach(), state[1].detach())
+                    else:
+                        state = state.detach()
 
-            (output, state) = model(X, state) # output: 形状为(num_steps * batch_size, vocab_size)
+            (output, state) = model(x, state) # output: 形状为(num_steps * batch_size, vocab_size)
 
-            # Y的形状是(batch_size, num_steps)，转置后再变成长度为
-            # batch * num_steps 的向量，这样跟输出的行一一对应
-            y = torch.transpose(Y, 0, 1).contiguous().view(-1)
+            # (seq_len, time_steps) => (seq_len * time_steps, 1)
+            y = y.contiguous().view(-1)  
             l = loss(output, y.long())
 
             optimizer.zero_grad()
             l.backward()
-            # 梯度裁剪
-            d2l.grad_clipping(model.parameters(), clipping_theta, device)
+            # gradient clip
+            grad_clipping(model.parameters(), clipping_theta, device)
             optimizer.step()
             l_sum += l.item() * y.shape[0]
             n += y.shape[0]
 
+        # computer perplexity
         try:
             perplexity = math.exp(l_sum / n)
         except OverflowError:
             perplexity = float('inf')
+
         if (epoch + 1) % pred_period == 0:
             print('epoch %d, perplexity %f, time %.2f sec' % (
                 epoch + 1, perplexity, time.time() - start))
             for prefix in prefixes:
-                print(' -', predict(model,
-                    prefix, pred_len, device, idx_to_char, char_to_idx))
+                print(' -', predict(model, prefix, pred_len, device, index_to_char, char_to_index))
 
 
 def main():
 
-    # ---------------------------- config--------------------------------------
-
     #------------------------------ load dataset-------------------------------
-
     with zipfile.ZipFile('../Datasets/jaychou_lyrics/jaychou_lyrics.txt.zip') as zin:
         with zin.open('jaychou_lyrics.txt') as f:
             corpus_chars = f.read().decode('utf-8')  # corpus
@@ -295,30 +312,30 @@ def main():
     print(''.join([index_to_char[index] for index in corpus_indices[:40]]))
 
 
-    model = RNNModel(hidden_size=128, vocab_size=vocab_size, embedding_dim=256)
+    # ------------------------- config----------------------------
+    embedding_dim = 256
+    hidden_size = 512
+    seq_len = 32
+    time_steps = 40
+
+    num_epochs = 2000
+    lr = 0.001
+    clipping_theta = 0.01
+
+    sample_mode = 'consecutive'  # random | consecutive
+
+    pred_period, pred_len, prefixes = 50, 100, ['好想', '不想']
+
+
+    model = RNNModel(hidden_size=hidden_size, vocab_size=vocab_size, embedding_dim=embedding_dim).to(device)
 
     for name, param in model.named_parameters():
         print(name, param.size())
 
-
-    inputs = torch.arange(10).view(2, 5)
-
-
-    states = None
-    outputs, states = model(inputs, states)
-
-
-    p = predict(model, '分开', 10, device, index_to_char, char_to_index)
-
-    print(p)
-
-    time_step = 40
-    # dataset_mode = 'random'  # random | consecutive
-    num_epochs, seq_length, lr, clipping_theta = 10000, 32, 1e-3, 1e-2  # 注意这里的学习率设置
-    pred_period, pred_len, prefixes = 50, 50, ['分开', '不分开']
-    train_and_predict(model, device, corpus_indices, index_to_char, char_to_index,
-                      num_epochs, time_step, lr, clipping_theta, seq_length, pred_period, pred_len, prefixes)
-
+    train_and_predict(model=model, corpus_indices=corpus_indices, sample_model=sample_mode, num_epochs=num_epochs,
+                      seq_len=seq_len, time_steps=time_steps, lr=lr, clipping_theta=clipping_theta,
+                      index_to_char=index_to_char, char_to_index=char_to_index, pred_period=pred_period,
+                      pred_len=pred_len, prefixes=prefixes, device=device)
 
 
 
