@@ -254,7 +254,9 @@ def train_and_predict(model, corpus_indices, sample_model, num_epochs, seq_len, 
                 state = None  # reset state at every step
             else:
                 if state is not None:
-                    # detach state from computer graph to prevent the overhead of gradient compute
+                    # pytorch是动态计算图，每次backward后，本次计算图自动销毁，但是计算图中的节点都还保留。
+                    # 方向传播直到叶子节点为止，否者一直传播，直到找到叶子节点
+                    # 这里 detach的作用是梯度节流，防止反向传播传播到隐藏状态时，因为上次小批量方向传播计算图的销毁导致继续向下传播而引起报错。
                     if isinstance (state, tuple): # LSTM, state:(h, c)
                         state = (state[0].detach(), state[1].detach())
                     else:
