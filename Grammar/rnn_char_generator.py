@@ -340,7 +340,6 @@ def main():
                       pred_len=pred_len, prefixes=prefixes, device=device)
 
 
-
 if __name__ == "__main__":
 
     main()

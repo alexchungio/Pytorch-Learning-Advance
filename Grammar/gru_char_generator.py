@@ -251,7 +251,6 @@ def train_and_predict(model, corpus_indices, sample_model, num_epochs, seq_len, 
 
 
 def main():
-
     #------------------------------ load dataset-------------------------------
     with zipfile.ZipFile('../Datasets/jaychou_lyrics/jaychou_lyrics.txt.zip') as zin:
         with zin.open('jaychou_lyrics.txt') as f:
