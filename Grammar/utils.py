@@ -379,9 +379,6 @@ def data_iter_consecutive(corpus_indices, batch_size, num_steps, device=None):
         yield X, Y
 
 
-
-
-
 # ###################################### 6.4 ######################################
 def one_hot(x, n_class, dtype=torch.float32): 
     # X shape: (batch), output shape: (batch, n_class)
