@@ -144,51 +144,6 @@ def softmax(x, derivative=False):
     else:  # Return the forward pass of the function at x
         return f
 
-
-class RNNCell(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
-        super(RNNCell, self).__init__()
-
-        self.hidden_size = hidden_size
-
-        self.w_ih = nn.Parameter(torch.tensor(np.random.normal(0, 0.01, size=(hidden_size, input_size)),
-                                              dtype=torch.float32),
-                                 requires_grad=True)
-        self.w_hh = nn.Parameter(torch.tensor(np.random.normal(0, 0.01, size=(hidden_size, hidden_size)),
-                                              dtype=torch.float32),
-                                 requires_grad=True)
-        self.b_h = torch.nn.Parameter(torch.zeros(hidden_size), requires_grad=True)
-
-        self.w_hq = nn.Parameter(torch.tensor(np.random.normal(0, 0.01, size=(output_size, hidden_size)),
-                                              dtype=torch.float32),
-                                 requires_grad=True)
-        self.b_q = nn.Parameter(torch.zeros(output_size), requires_grad=True)
-
-
-    def forward(self, inputs, hidden_state):
-        """
-
-        :param inputs:
-        :return:
-        """
-
-        # initial state
-        # h_t = torch.zeros(inputs.size(0), self.hidden_size, dtype=torch.double)
-
-        outputs = []
-
-        for input in inputs:
-
-            hidden_state = torch.tanh(torch.matmul(self.w_ih, input) + torch.matmul(self.w_hh, hidden_state) + self.b_h)
-
-            out = torch.matmul(self.w_hq, hidden_state) + self.b_q
-
-            outputs.append(out)
-
-        return outputs, hidden_state
-
-
-
 class RNN(nn.Module):
 
     def __init__(self, input_size, hidden_size, num_layers, output_size):

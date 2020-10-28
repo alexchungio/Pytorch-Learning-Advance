@@ -286,7 +286,7 @@ def main():
 
     sample_mode = 'consecutive'  # random | consecutive
 
-    pred_period, pred_len, prefixes = 50, 100, ['好想', '不想']
+    pred_period, pred_len, prefixes = 50, 100, ['爱你', '不爱']
 
 
     model = GRUModel(hidden_size=hidden_size, vocab_size=vocab_size, embedding_dim=embedding_dim).to(device)
