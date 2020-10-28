@@ -21,10 +21,12 @@ pytorch learning advance
 * [ResNet](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/ResNet.ipynb)
 
 ### RNN
+* [LM-Dataset](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/language_model_dataset.ipynb)
 * [RNN](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/RNN.ipynb)
+* [LSTM](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/LSTM.ipynb)
+* [GRU](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/GRU.ipynb)
 
 ### Visualize
-
 
 ## TODO
 
