@@ -27,7 +27,7 @@ pytorch learning advance
 
 ### Visualize
 * [visdom](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/visdom_mnist.py)
-* [tensorboard](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/tensorboard_mnist.py)
+* [tensorboard](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/tensorboard_cifar10.py)
 
 ## TODO
 
