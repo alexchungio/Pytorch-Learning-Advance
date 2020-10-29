@@ -22,6 +22,7 @@ from torch.optim.lr_scheduler import StepLR
 import torch.optim as optim
 
 
+
 # run
 # $ python -m visdom.server
 # or
@@ -139,7 +140,7 @@ def test(model, test_loader, loss, epoch, device=None):
                                                                                     caption='val image'))
 
 
-        print('Eval epoch {} => loss {:.4f}, acc {:.4f}'.
+        print('\teval => loss {:.4f}, acc {:.4f}'.
               format(epoch, test_loss, test_acc))
 
         return test_loss, test_acc
@@ -174,7 +175,7 @@ def train(model, train_loader, loss, optimizer, epoch, device=None):
     train_loss = train_loss / num_batch
     train_acc = train_acc / num_samples
 
-    print('Train epoch {} => loss {:.4f}, acc {:.4f}'.
+    print('\ttrain => loss {:.4f}, acc {:.4f}'.
           format(epoch, train_loss, train_acc))
 
     return train_loss, train_acc

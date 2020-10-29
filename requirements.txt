@@ -15,7 +15,6 @@ torchvision==0.5.0
 tornado==6.0.4
 tqdm==4.48.2
 visdom==0.1.8
-tensorboardX==2.1
 tensorboard==2.2.1
 
 
