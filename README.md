@@ -3,7 +3,6 @@ pytorch learning advance
 
 
 ## Project List
-
 ### Basic
 * [regression](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/regression.py)
 * [classification](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/classification.py)
@@ -27,6 +26,8 @@ pytorch learning advance
 * [GRU](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/GRU.ipynb)
 
 ### Visualize
+* [visdom](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/visdom_mnist.py)
+* [tensorboard](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/tensorboard_mnist.py)
 
 ## TODO
 
