@@ -197,11 +197,14 @@ def main():
 
     viz.line([[0., 0.]], [0], win='loss', opts=dict(title='loss', legend=['train', 'val']))
     viz.line([[0., 0.]], [0], win='accuracy', opts=dict(title='accuracy', legend=['train', 'val']))
+    viz.line([0.], [0.], win='lr', opts=dict(title='lr'))
+
     viz.images(
         np.random.randn(100, 1, 28, 28), nrow=10, win='val_image', opts=dict(title='val images', store_history=True,
                                                                    caption='random image')
     )
 
+    optimizer.state_dict()
     for epoch in range(num_epochs):
         print('Epoch: {}:'.format(epoch + 1))
         train_loss, train_acc = train(model, train_loader, loss, optimizer, epoch + 1, device)
@@ -209,6 +212,7 @@ def main():
         scheduler.step(epoch)
         viz.line([[train_loss, test_loss]], [epoch], win='loss', update='append')
         viz.line([[train_acc, test_acc]], [epoch], win='accuracy', update='append')
+        viz.line([optimizer.param_groups[0]['lr']], [epoch], win='lr', update='append')
 
 
 if __name__ == "__main__":
