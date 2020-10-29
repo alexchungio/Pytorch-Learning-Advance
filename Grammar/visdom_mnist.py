@@ -10,6 +10,7 @@
 # @ Software   : PyCharm
 #-------------------------------------------------------
 
+import numpy as np
 import time
 import torch
 import torch.nn as nn
@@ -20,8 +21,11 @@ import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import StepLR
 import torch.optim as optim
 
+
 # run
 # $ python -m visdom.server
+# or
+# $ visdom
 
 # kill
 # $ lsof -i:8097
@@ -32,7 +36,7 @@ import torch.optim as optim
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # # visdom instance
-viz = Visdom()
+viz = Visdom(env='dev')
 
 
 def load_dataset(batch_size, size=None, num_workers=4):
@@ -123,17 +127,22 @@ def test(model, test_loader, loss, epoch, device=None):
             x, y = x.to(device), y.to(device)  # load data to device
             y_pred = model(x)
             l = loss(y_pred, y)
-            test_loss += l
+            test_loss += l.cpu().item()
             test_acc += (y_pred.argmax(dim=1) == y).float().sum().cpu().item()
             num_samples += x.shape[0]
             num_batch += 1
 
         test_loss = test_loss / num_batch
         test_acc = test_acc / num_samples
+
+        viz.images(x[:100].view(-1, 1, 28, 28), nrow=10, win='val_image', opts=dict(title='val images', store_history=True,
+                                                                                    caption='val image'))
+
+
         print('Eval epoch {} => loss {:.4f}, acc {:.4f}'.
               format(epoch, test_loss, test_acc))
 
-        return test_loss.cpu(), test_acc
+        return test_loss, test_acc
 
 
 def train(model, train_loader, loss, optimizer, epoch, device=None):
@@ -188,7 +197,10 @@ def main():
 
     viz.line([[0., 0.]], [0], win='loss', opts=dict(title='loss', legend=['train', 'val']))
     viz.line([[0., 0.]], [0], win='accuracy', opts=dict(title='accuracy', legend=['train', 'val']))
-
+    viz.images(
+        np.random.randn(100, 1, 28, 28), nrow=10, win='val_image', opts=dict(title='val images', store_history=True,
+                                                                   caption='random image')
+    )
 
     for epoch in range(num_epochs):
         print('Epoch: {}:'.format(epoch + 1))
@@ -197,6 +209,7 @@ def main():
         scheduler.step(epoch)
         viz.line([[train_loss, test_loss]], [epoch], win='loss', update='append')
         viz.line([[train_acc, test_acc]], [epoch], win='accuracy', update='append')
+
 
 if __name__ == "__main__":
     main()
