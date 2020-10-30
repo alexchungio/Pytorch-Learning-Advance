@@ -48,13 +48,14 @@ def load_dataset(batch_size, size=None, num_workers=4):
     train_loader = data.DataLoader(mnist_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     test_loader = data.DataLoader(mnist_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-    return train_loader, train_loader
+    return mnist_train, mnist_test, train_loader, test_loader
 
 
 def get_cifar10_labels(labels):
     text_labels = ['airplane', 'automobile', 'bird', 'cat', 'deer',
                    'dog', 'frog', 'horse', 'ship', 'truck']
     return [text_labels[int(i)] for i in labels]
+
 
 
 class CNN(nn.Module):
@@ -285,7 +286,20 @@ def main():
     # optimizer = optim.Adam(params=model.parameters(), lr=lr) # Adam
     scheduler = StepLR(optimizer, step_size=5, gamma=gamma)
 
-    train_loader, test_loader = load_dataset(batch_size)
+    mnist_train, mnist_test, train_loader, test_loader = load_dataset(batch_size)
+
+
+    # dataset dimedion visualize
+    images = mnist_test.data
+    images = np.transpose(images, (0,3,1,2))
+    images = torch.tensor(images, dtype=torch.float32)
+    labels = [mnist_test.classes[label] for label in mnist_test.targets]
+    features = images.view(-1, 3*32*32)
+
+    writer.add_embedding(mat=features,
+                         metadata=labels,
+                         label_img=images,
+                         global_step=0)
 
     global_step = 0
     for epoch in range(num_epochs):
@@ -310,7 +324,6 @@ def main():
     torch.save(model.state_dict(), '../Outputs/cifar10/cifar10.pt')
 
     writer.close()
-
 
 
 if __name__ == "__main__":
