@@ -11,24 +11,23 @@
 #-------------------------------------------------------
 
 import time
+import numpy as np
 import torch
 import torch.nn as nn
-from visdom import Visdom
 import torchvision.utils as vutils
 import torchvision
 import torch.utils.data as data
 import torch.nn.functional as F
-import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import StepLR
 import torch.optim as optim
-
+import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # # visdom instance
-writer = SummaryWriter(log_dir='../Outputs/Logs')
+writer = SummaryWriter(log_dir='../Outputs/Logs/cifar10')
 
 
 def load_dataset(batch_size, size=None, num_workers=4):
@@ -50,6 +49,12 @@ def load_dataset(batch_size, size=None, num_workers=4):
     test_loader = data.DataLoader(mnist_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     return train_loader, train_loader
+
+
+def get_cifar10_labels(labels):
+    text_labels = ['airplane', 'automobile', 'bird', 'cat', 'deer',
+                   'dog', 'frog', 'horse', 'ship', 'truck']
+    return [text_labels[int(i)] for i in labels]
 
 
 class CNN(nn.Module):
@@ -114,6 +119,59 @@ class CNN(nn.Module):
         return x
 
 
+def plt_imshow(img, one_channel=False):
+    # if one_channel:
+    #     img = img.mean(dim=0)
+    # img = img / 2 + 0.5  # unnormalize
+    #
+    # img_array = img.numpy()
+    # if one_channel:
+    #     plt.imshow(img_array, cmap="Greys")
+    # else:
+    #     plt.imshow(np.transpose(img_array, (1, 2, 0)))
+    img_array = img.numpy()
+    plt.imshow(np.transpose(img_array, (1, 2, 0)))
+
+
+def predict(model, images):
+    """
+
+    :param model:
+    :param images:
+    :return:  pred, prob
+    """
+
+    output = model(images)
+    # convert output probabilities to predicted class
+    _, pred_tensor = torch.max(output, 1)
+    pred = np.squeeze(pred_tensor.cpu().numpy())
+
+    return pred, [F.softmax(el, dim=0)[i].item() for i, el in zip(pred, output)]
+
+
+def plot_classes_predict(model, images, labels, device=None):
+
+    if device is not None:
+        preds, probs = predict(model, images.to(device))
+
+    else:
+        preds, probs = predict(model, images)
+
+    classes = get_cifar10_labels(preds)
+
+    fig = plt.figure(figsize=(64, 64))
+    for idx in np.arange(100):
+        ax = fig.add_subplot(10, 10, idx + 1, xticks=[], yticks=[])
+        plt_imshow(images[idx])
+        ax.set_title("{0}, {1:.1f} % \n (label: {2})".format(
+            classes[idx],  # class
+            probs[idx] * 100.0,  # prob
+            labels[idx]), # labels
+            color=("green" if preds[idx] == labels[idx].item() else "red"),
+            fontsize = 28)
+    return fig
+
+
 def test(model, test_loader, loss, epoch, device=None):
     """
 
@@ -140,7 +198,7 @@ def test(model, test_loader, loss, epoch, device=None):
 
 
         feature = x[0].unsqueeze(0)  # expend dimension (1, 32, 32) => (1, 1, 32, 32)
-        image_grid = vutils.make_grid(feature[0], normalize=True, scale_each=True)
+        image_grid = vutils.make_grid(feature[0], normalize=False, scale_each=True)
         writer.add_image('raw_image', image_grid, epoch)
 
         for name, layer in model._modules.items():
@@ -239,6 +297,13 @@ def main():
         # add dict
         writer.add_scalars(main_tag='epoch/loss', tag_scalar_dict={'train':train_loss, 'val': test_loss}, global_step=epoch)
         writer.add_scalars(main_tag='epoch/acc', tag_scalar_dict={'train': train_acc, 'val': test_acc}, global_step=epoch)
+
+
+        images, labels = next(iter(test_loader))
+        fig = plot_classes_predict(model, images, labels, device)
+        writer.add_figure(tag='predict_vs_actual', figure=fig, global_step=epoch)
+
+
 
     writer.add_graph(model, torch.randn(1, 3, 32, 32, device=device))
     torch.save(model.state_dict(), '../Outputs/cifar10/cifar10.pt')
