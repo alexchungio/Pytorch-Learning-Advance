@@ -32,18 +32,31 @@ writer = SummaryWriter(log_dir='../Outputs/Logs/cifar10')
 
 def load_dataset(batch_size, size=None, num_workers=4):
     # dataset process
-    trans = []
+    train_trans = []
+    test_trans = []
     if size:
-        trans.append(torchvision.transforms.Resize(size=size))
-    trans.append(torchvision.transforms.ToTensor())
+        train_trans.append(torchvision.transforms.Resize(size=size))
 
-    transform = torchvision.transforms.Compose(trans)
+        test_trans.append(torchvision.transforms.Resize(size=size))
+
+
+    train_trans.append(torchvision.transforms.RandomHorizontalFlip())
+    train_trans.append(torchvision.transforms.RandomVerticalFlip())
+
+    train_trans.append(torchvision.transforms.ToTensor())
+    train_trans.append(torchvision.transforms.RandomErasing())
+
+
+    test_trans.append(torchvision.transforms.ToTensor())
+
+    train_transform = torchvision.transforms.Compose(train_trans)
+    test_transform = torchvision.transforms.Compose(test_trans)
 
     # load
     cifar10_train = torchvision.datasets.CIFAR10(root='../Datasets/CIFA10', train=True, download=True,
-                                                    transform=transform)
+                                                    transform=train_transform)
     cifar10_test = torchvision.datasets.CIFAR10(root='../Datasets/CIFA10', train=False, download=True,
-                                                   transform=transform)
+                                                   transform=test_transform)
     # generate
     train_loader = data.DataLoader(cifar10_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     test_loader = data.DataLoader(cifar10_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
@@ -86,7 +99,7 @@ class CNN(nn.Module):
         self.fc1 = nn.Linear(in_features=256*4*4, out_features=128)
         self.bn4 = nn.BatchNorm1d(num_features=128)
         self.relu4 = nn.ReLU()
-        self.dropout2 = nn.Dropout(0.5)
+        self.dropout2 = nn.Dropout(0.25)
 
         self.fc2 = nn.Linear(in_features=128, out_features=10)
 
@@ -141,7 +154,7 @@ def predict(model, images):
     :param images:
     :return:  pred, prob
     """
-
+    model.eval()
     output = model(images)
     # convert output probabilities to predicted class
     _, pred_tensor = torch.max(output, 1)
@@ -277,7 +290,7 @@ def main():
     print(device)
     num_epochs = 50
     batch_size = 256
-    lr, gamma = 0.2, 0.9
+    lr, gamma = 0.1, 0.9
     log_iter = 100
     model = CNN().to(device)
     loss = nn.CrossEntropyLoss()
