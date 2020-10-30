@@ -58,7 +58,7 @@ def load_dataset(batch_size, size=None, num_workers=4):
     train_loader = data.DataLoader(mnist_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     test_loader = data.DataLoader(mnist_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-    return train_loader, train_loader
+    return train_loader, test_loader
 
 
 class CNN(nn.Module):
@@ -112,7 +112,7 @@ class CNN(nn.Module):
         return x
 
 
-def test(model, test_loader, loss, epoch, device=None):
+def test(model, test_loader, loss, device=None):
     """
 
     """
@@ -141,12 +141,12 @@ def test(model, test_loader, loss, epoch, device=None):
 
 
         print('\teval => loss {:.4f}, acc {:.4f}'.
-              format(epoch, test_loss, test_acc))
+              format(test_loss, test_acc))
 
         return test_loss, test_acc
 
 
-def train(model, train_loader, loss, optimizer, epoch, device=None):
+def train(model, train_loader, loss, optimizer, device=None):
     """
     convert train model
     """
@@ -172,11 +172,11 @@ def train(model, train_loader, loss, optimizer, epoch, device=None):
         num_samples += x.shape[0]
         num_batch += 1
 
-    train_loss = train_loss / num_batch
-    train_acc = train_acc / num_samples
+    train_loss /= num_batch
+    train_acc /= num_samples
 
     print('\ttrain => loss {:.4f}, acc {:.4f}'.
-          format(epoch, train_loss, train_acc))
+          format(train_loss, train_acc))
 
     return train_loss, train_acc
 
@@ -184,7 +184,7 @@ def train(model, train_loader, loss, optimizer, epoch, device=None):
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
-    num_epochs = 40
+    num_epochs = 20
     batch_size = 256
     lr, gamma = 0.1, 0.9
     model = CNN().to(device)
@@ -196,9 +196,9 @@ def main():
 
     train_loader, test_loader = load_dataset(batch_size)
 
-    viz.line([[0., 0.]], [0], win='loss', opts=dict(title='loss', legend=['train', 'val']))
-    viz.line([[0., 0.]], [0], win='accuracy', opts=dict(title='accuracy', legend=['train', 'val']))
-    viz.line([0.], [0.], win='lr', opts=dict(title='lr'))
+    viz.line(np.array([[0., 0.]]), np.array([0.]), win='loss', opts=dict(title='loss', legend=['train', 'val']))
+    viz.line(np.array([[0., 0.]]), np.array([0.]), win='accuracy', opts=dict(title='accuracy', legend=['train', 'val']))
+    viz.line(np.array([0.]), np.array([0.]), win='lr', opts=dict(title='lr'))
 
     viz.images(
         np.random.randn(100, 1, 28, 28), nrow=10, win='val_image', opts=dict(title='val images', store_history=True,
@@ -208,12 +208,12 @@ def main():
     optimizer.state_dict()
     for epoch in range(num_epochs):
         print('Epoch: {}:'.format(epoch + 1))
-        train_loss, train_acc = train(model, train_loader, loss, optimizer, epoch + 1, device)
-        test_loss, test_acc = test(model, test_loader, loss, epoch + 1, device=device)
+        train_loss, train_acc = train(model, train_loader, loss, optimizer, device)
+        test_loss, test_acc = test(model, test_loader, loss, device=device)
         scheduler.step(epoch)
-        viz.line([[train_loss, test_loss]], [epoch], win='loss', update='append')
-        viz.line([[train_acc, test_acc]], [epoch], win='accuracy', update='append')
-        viz.line([optimizer.param_groups[0]['lr']], [epoch], win='lr', update='append')
+        viz.line(np.array([[train_loss, test_loss]]), np.array([epoch]), win='loss', update='append')
+        viz.line(np.array([[train_acc, test_acc]]), np.array([epoch]), win='accuracy', update='append')
+        viz.line(np.array([optimizer.param_groups[0]['lr']]), np.array([epoch]), win='lr', update='append')
 
 
 if __name__ == "__main__":
