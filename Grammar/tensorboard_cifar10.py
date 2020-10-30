@@ -40,15 +40,15 @@ def load_dataset(batch_size, size=None, num_workers=4):
     transform = torchvision.transforms.Compose(trans)
 
     # load
-    mnist_train = torchvision.datasets.CIFAR10(root='../Datasets/CIFA10', train=True, download=True,
+    cifar10_train = torchvision.datasets.CIFAR10(root='../Datasets/CIFA10', train=True, download=True,
                                                     transform=transform)
-    mnist_test = torchvision.datasets.CIFAR10(root='../Datasets/CIFA10', train=False, download=True,
+    cifar10_test = torchvision.datasets.CIFAR10(root='../Datasets/CIFA10', train=False, download=True,
                                                    transform=transform)
     # generate
-    train_loader = data.DataLoader(mnist_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    test_loader = data.DataLoader(mnist_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    train_loader = data.DataLoader(cifar10_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    test_loader = data.DataLoader(cifar10_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-    return mnist_train, mnist_test, train_loader, test_loader
+    return train_loader, test_loader
 
 
 def get_cifar10_labels(labels):
@@ -286,20 +286,20 @@ def main():
     # optimizer = optim.Adam(params=model.parameters(), lr=lr) # Adam
     scheduler = StepLR(optimizer, step_size=5, gamma=gamma)
 
-    mnist_train, mnist_test, train_loader, test_loader = load_dataset(batch_size)
+    train_loader, test_loader = load_dataset(batch_size)
 
 
-    # dataset dimedion visualize
+    # dataset dimension visualize
+    mnist_test = torchvision.datasets.MNIST(root='../Datasets/MNIST', train=False, download=True,
+                                              transform=torchvision.transforms.ToTensor())
     images = mnist_test.data
-    images = np.transpose(images, (0,3,1,2))
-    images = torch.tensor(images, dtype=torch.float32)
-    labels = [mnist_test.classes[label] for label in mnist_test.targets]
-    features = images.view(-1, 3*32*32)
+    # images = np.transpose(images, (0,3,1,2))
+    images = images[:,np.newaxis,:,:]  # (10000, 28, 28) => (10000, 1, 28, 28)
+    images = images.clone().detach()
+    labels = [mnist_test.classes[label].split('-')[1] for label in mnist_test.targets]
+    features = images.view(-1, 1*28*28)
 
-    writer.add_embedding(mat=features,
-                         metadata=labels,
-                         label_img=images,
-                         global_step=0)
+    writer.add_embedding(mat=features, metadata=labels, label_img=images, global_step=0)
 
     global_step = 0
     for epoch in range(num_epochs):
