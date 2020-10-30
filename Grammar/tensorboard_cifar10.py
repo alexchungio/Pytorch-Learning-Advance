@@ -304,8 +304,9 @@ def main():
         writer.add_figure(tag='predict_vs_actual', figure=fig, global_step=epoch)
 
 
-
-    writer.add_graph(model, torch.randn(1, 3, 32, 32, device=device))
+    # To save the model graph, the input_to_model should input a demo batch witch
+    images_batch = torch.randn(1, 3, 32, 32, device=device)
+    writer.add_graph(model, input_to_model=images_batch)
     torch.save(model.state_dict(), '../Outputs/cifar10/cifar10.pt')
 
     writer.close()
