@@ -10,12 +10,14 @@
 # @ Software   : PyCharm
 #-------------------------------------------------------
 
+import os
 import time
 import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.utils as vutils
 import torchvision
+import torchvision.transforms as transforms
 import torch.utils.data as data
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR
@@ -30,24 +32,22 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 writer = SummaryWriter(log_dir='../Outputs/Logs/cifar10')
 
 
-def load_dataset(batch_size, size=None, num_workers=4):
+def load_dataset(batch_size, num_workers=4):
     # dataset process
-    train_trans = []
+
     test_trans = []
-    if size:
-        train_trans.append(torchvision.transforms.Resize(size=size))
 
-        test_trans.append(torchvision.transforms.Resize(size=size))
+    train_trans = [
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    ]
 
-
-    train_trans.append(torchvision.transforms.RandomHorizontalFlip())
-    train_trans.append(torchvision.transforms.RandomVerticalFlip())
-
-    train_trans.append(torchvision.transforms.ToTensor())
-    train_trans.append(torchvision.transforms.RandomErasing())
-
-
-    test_trans.append(torchvision.transforms.ToTensor())
+    test_trans = [
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    ]
 
     train_transform = torchvision.transforms.Compose(train_trans)
     test_transform = torchvision.transforms.Compose(test_trans)
@@ -99,7 +99,7 @@ class CNN(nn.Module):
         self.fc1 = nn.Linear(in_features=256*4*4, out_features=128)
         self.bn4 = nn.BatchNorm1d(num_features=128)
         self.relu4 = nn.ReLU()
-        self.dropout2 = nn.Dropout(0.25)
+        self.dropout2 = nn.Dropout(0.5)
 
         self.fc2 = nn.Linear(in_features=128, out_features=10)
 
@@ -133,18 +133,14 @@ class CNN(nn.Module):
         return x
 
 
-def plt_imshow(img, one_channel=False):
-    # if one_channel:
-    #     img = img.mean(dim=0)
-    # img = img / 2 + 0.5  # unnormalize
-    #
-    # img_array = img.numpy()
-    # if one_channel:
-    #     plt.imshow(img_array, cmap="Greys")
-    # else:
-    #     plt.imshow(np.transpose(img_array, (1, 2, 0)))
-    img_array = img.numpy()
-    plt.imshow(np.transpose(img_array, (1, 2, 0)))
+def plt_imshow(img):
+
+    img = img.numpy().transpose((1, 2, 0))
+    mean = np.array((0.4914, 0.4822, 0.4465))
+    std = np.array((0.2023, 0.1994, 0.2010))
+    inp = std * img + mean
+    img = np.clip(inp, 0, 1)
+    plt.imshow(img)
 
 
 def predict(model, images):
@@ -288,16 +284,16 @@ def train(model, train_loader, loss, optimizer, global_step, log_iter=None, devi
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
-    num_epochs = 50
+    num_epochs = 120
     batch_size = 256
     lr, gamma = 0.1, 0.9
     log_iter = 100
     model = CNN().to(device)
     loss = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(params=model.parameters(), lr=lr, momentum=0.9)  # SGDM
+    optimizer = optim.SGD(params=model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-5)  # SGDM
+    # optimizer = optim.ASGD(params=model.parameters(), lr=lr)
 
-    # optimizer = optim.Adam(params=model.parameters(), lr=lr) # Adam
-    scheduler = StepLR(optimizer, step_size=5, gamma=gamma)
+    scheduler = StepLR(optimizer, step_size=60, gamma=gamma)
 
     train_loader, test_loader = load_dataset(batch_size)
 
@@ -330,14 +326,14 @@ def main():
         fig = plot_classes_predict(model, images, labels, device)
         writer.add_figure(tag='predict_vs_actual', figure=fig, global_step=epoch)
 
-
     # To save the model graph, the input_to_model should input a demo batch witch
     images_batch = torch.randn(1, 3, 32, 32, device=device)
     writer.add_graph(model, input_to_model=images_batch)
-    torch.save(model.state_dict(), '../Outputs/cifar10/cifar10.pt')
+    model_path = '../Outputs/cifar10/cifar10.pt'
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    torch.save(model.state_dict(), model_path)
 
     writer.close()
-
-
+    torchvision.models.vgg16()
 if __name__ == "__main__":
     main()
