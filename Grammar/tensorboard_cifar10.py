@@ -329,11 +329,13 @@ def main():
     # To save the model graph, the input_to_model should input a demo batch witch
     images_batch = torch.randn(1, 3, 32, 32, device=device)
     writer.add_graph(model, input_to_model=images_batch)
+
     model_path = '../Outputs/cifar10/cifar10.pt'
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     torch.save(model.state_dict(), model_path)
 
     writer.close()
-    torchvision.models.vgg16()
+
+
 if __name__ == "__main__":
     main()
