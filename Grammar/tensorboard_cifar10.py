@@ -31,6 +31,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # # visdom instance
 writer = SummaryWriter(log_dir='../Outputs/Logs/cifar10')
 
+mean = (0.4914, 0.4822, 0.4465)
+std = (0.2023, 0.1994, 0.2010)
+
 
 def load_dataset(batch_size, num_workers=4):
     # dataset process
@@ -41,12 +44,12 @@ def load_dataset(batch_size, num_workers=4):
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+        transforms.Normalize(mean, std)
     ]
 
     test_trans = [
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+        transforms.Normalize(mean, std)
     ]
 
     train_transform = torchvision.transforms.Compose(train_trans)
@@ -134,10 +137,11 @@ class CNN(nn.Module):
 
 
 def plt_imshow(img):
-
+    global mean
+    global std
     img = img.numpy().transpose((1, 2, 0))
-    mean = np.array((0.4914, 0.4822, 0.4465))
-    std = np.array((0.2023, 0.1994, 0.2010))
+    mean = np.array(mean)
+    std = np.array(std)
     inp = std * img + mean
     img = np.clip(inp, 0, 1)
     plt.imshow(img)
@@ -208,9 +212,16 @@ def test(model, test_loader, loss, epoch, device=None):
 
 
         feature = x[0].unsqueeze(0)  # expend dimension (1, 32, 32) => (1, 1, 32, 32)
-        image_grid = vutils.make_grid(feature[0], normalize=False, scale_each=True)
+
+        # write raw image to logs
+        # feature * std + mean
+        mean_tensor = torch.tensor(mean, dtype=torch.float32, device=device).reshape((3, 1, 1))
+        std_tensor = torch.tensor(std, dtype=torch.float32, device=device).reshape((3, 1, 1))
+        image_tensor = feature[0] * std_tensor + mean_tensor
+        image_grid = vutils.make_grid(image_tensor, normalize=False, scale_each=True)
         writer.add_image('raw_image', image_grid, epoch)
 
+        # write model features to logs
         for name, layer in model._modules.items():
 
             if 'fc' in name:
@@ -293,7 +304,7 @@ def main():
     optimizer = optim.SGD(params=model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-5)  # SGDM
     # optimizer = optim.ASGD(params=model.parameters(), lr=lr)
 
-    scheduler = StepLR(optimizer, step_size=60, gamma=gamma)
+    scheduler = StepLR(optimizer, step_size=40, gamma=gamma)
 
     train_loader, test_loader = load_dataset(batch_size)
 
@@ -315,12 +326,14 @@ def main():
         print('Epoch: {}:'.format(epoch + 1))
         train_loss, train_acc, global_step = train(model, train_loader, loss, optimizer, global_step, log_iter, device)
         test_loss, test_acc = test(model, test_loader, loss, epoch, device=device)
-        scheduler.step(epoch)
+        scheduler.step(epoch=epoch)
 
-        # add dict
+        # add loss and acc to logs
         writer.add_scalars(main_tag='epoch/loss', tag_scalar_dict={'train':train_loss, 'val': test_loss}, global_step=epoch)
         writer.add_scalars(main_tag='epoch/acc', tag_scalar_dict={'train': train_acc, 'val': test_acc}, global_step=epoch)
 
+        # add learning_rate to logs
+        writer.add_scalar(tag='lr', scalar_value=optimizer.param_groups[0]['lr'], global_step=epoch)
 
         images, labels = next(iter(test_loader))
         fig = plot_classes_predict(model, images, labels, device)
