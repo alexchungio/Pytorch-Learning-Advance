@@ -20,7 +20,7 @@ import torchvision
 import torchvision.transforms as transforms
 import torch.utils.data as data
 import torch.nn.functional as F
-from torch.optim.lr_scheduler import StepLR
+from torch.optim import lr_scheduler
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
@@ -37,8 +37,6 @@ std = (0.2023, 0.1994, 0.2010)
 
 def load_dataset(batch_size, num_workers=4):
     # dataset process
-
-    test_trans = []
 
     train_trans = [
         transforms.RandomCrop(32, padding=4),
@@ -78,33 +76,44 @@ class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
 
-        # 6,32,32
+        # 16, 16, 16
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(num_features=16)
-
         self.relu1 = nn.ReLU()
-        # 16,16,16
         self.maxpool1 = nn.MaxPool2d(kernel_size=2)
 
-        # 64, 16, 16
+        # 64, 8, 8
         self.conv2 = nn.Conv2d(in_channels=16, out_channels=64, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(num_features=64)
         self.relu2 = nn.ReLU()
-        # 64，8, 8
         self.maxpool2 = nn.MaxPool2d(kernel_size=2)
 
-        self.conv3 = nn.Conv2d(in_channels=64, out_channels=256, kernel_size=3, stride=2, padding=1)
-        self.bn3 = nn.BatchNorm2d(num_features=256)
+        # 128, 4, 4
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm2d(num_features=128)
         self.relu3 = nn.ReLU()
+        self.maxpool3 = nn.MaxPool2d(kernel_size=2)
+
+        # 256, 2, 2
+        self.conv4 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1)
+        self.bn4 = nn.BatchNorm2d(num_features=256)
+        self.relu4 = nn.ReLU()
+        self.maxpool4 = nn.MaxPool2d(kernel_size=2)
+
+        # 512, 1, 1
+        self.conv5 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding=1)
+        self.bn5 = nn.BatchNorm2d(num_features=512)
+        self.relu5 = nn.ReLU()
+        self.maxpool5 = nn.MaxPool2d(kernel_size=2)
+
+        # 512, 1, 1
+        self.fc1 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
+        self.bn6 = nn.BatchNorm2d(num_features=512)
+        self.relu6 = nn.ReLU()
         self.dropout1 = nn.Dropout(0.5)
 
         # flatten
-        self.fc1 = nn.Linear(in_features=256*4*4, out_features=128)
-        self.bn4 = nn.BatchNorm1d(num_features=128)
-        self.relu4 = nn.ReLU()
-        self.dropout2 = nn.Dropout(0.5)
-
-        self.fc2 = nn.Linear(in_features=128, out_features=10)
+        self.fc2 = nn.Linear(in_features=512, out_features=10)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -115,22 +124,33 @@ class CNN(nn.Module):
         x = self.conv2(x)
         x = self.bn2(x)
         x = self.relu2(x)
-
         x = self.maxpool2(x)
-
 
         x = self.conv3(x)
         x = self.bn3(x)
         x = self.relu3(x)
-        x = self.dropout1(x)
+        x = self.maxpool3(x)
 
-        x = torch.flatten(x, start_dim=1)
-
-        x = self.fc1(x)
+        x = self.conv4(x)
         x = self.bn4(x)
         x = self.relu4(x)
-        x = self.dropout2(x)
+        x = self.maxpool4(x)
 
+        x = self.conv5(x)
+        x = self.bn5(x)
+        x = self.relu5(x)
+        x = self.maxpool5(x)
+
+        # fc1 module
+        x = self.fc1(x)
+        x = self.bn6(x)
+        x = self.relu6(x)
+        x = self.dropout1(x)
+
+        # out.view(out.size(0), -1)
+        x = torch.flatten(x, start_dim=1)
+
+        # fc2 module
         x = self.fc2(x)
 
         return x
@@ -295,16 +315,16 @@ def train(model, train_loader, loss, optimizer, global_step, log_iter=None, devi
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
-    num_epochs = 120
+    num_epochs = 350
     batch_size = 256
-    lr, gamma = 0.1, 0.9
+    lr, gamma = 0.1, 0.1
     log_iter = 100
     model = CNN().to(device)
     loss = nn.CrossEntropyLoss()
     optimizer = optim.SGD(params=model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-5)  # SGDM
     # optimizer = optim.ASGD(params=model.parameters(), lr=lr)
 
-    scheduler = StepLR(optimizer, step_size=40, gamma=gamma)
+    scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[150, 250], gamma=gamma)
 
     train_loader, test_loader = load_dataset(batch_size)
 
