@@ -110,7 +110,7 @@ class CNN(nn.Module):
         self.fc1 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
         self.bn6 = nn.BatchNorm2d(num_features=512)
         self.relu6 = nn.ReLU()
-        self.dropout1 = nn.Dropout(0.5)
+        self.dropout1 = nn.Dropout(0.25)
 
         # flatten
         self.fc2 = nn.Linear(in_features=512, out_features=10)
@@ -315,16 +315,16 @@ def train(model, train_loader, loss, optimizer, global_step, log_iter=None, devi
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
-    num_epochs = 350
+    num_epochs = 150
     batch_size = 256
     lr, gamma = 0.1, 0.1
     log_iter = 100
     model = CNN().to(device)
     loss = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(params=model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-5)  # SGDM
+    optimizer = optim.SGD(params=model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)  # SGDM
     # optimizer = optim.ASGD(params=model.parameters(), lr=lr)
 
-    scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[150, 250], gamma=gamma)
+    scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[70, 110], gamma=gamma)
 
     train_loader, test_loader = load_dataset(batch_size)
 
@@ -346,7 +346,7 @@ def main():
         print('Epoch: {}:'.format(epoch + 1))
         train_loss, train_acc, global_step = train(model, train_loader, loss, optimizer, global_step, log_iter, device)
         test_loss, test_acc = test(model, test_loader, loss, epoch, device=device)
-        scheduler.step(epoch=epoch)
+        scheduler.step()
 
         # add loss and acc to logs
         writer.add_scalars(main_tag='epoch/loss', tag_scalar_dict={'train':train_loss, 'val': test_loss}, global_step=epoch)
