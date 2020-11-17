@@ -13,20 +13,12 @@
 import os
 import numpy as np
 from PIL import Image
-import argparse
-
 import torch
 import torch.utils.data as data
 
+from pedestrian_detection.configs.args import args
 import pedestrian_detection.data.transforms as T
 from pedestrian_detection.libs import utils
-
-
-parser = argparse.ArgumentParser(description='Finetuning a pre-trained Mask R-CNN model in the Penn-Fudan Database for '
-                                             'Pedestrian Detection and Segmentation.')
-parser.add_argument('--dataset', default='/media/alex/AC6A2BDB6A2BA0D6/alex_dataset/PennFudanPed', type=str, help='dataset path')
-
-args = parser.parse_args()
 
 torch.manual_seed(20201116)
 
@@ -45,10 +37,10 @@ def visual_dataset():
     num_pedestrian = len(np.unique(np.array(mask))[1:]) # remove background
     print('Number pedestrian {}'.format(num_pedestrian))
 
-    color_mode = [0, 0, 255, # black background
-                  255, 0, 0, # index 1 is red
-                  255, 255, 0, # index 2 is yellow
-                  255, 153, 0, # index 3 is orange
+    color_mode = [0, 0, 255,  # black background
+                  255, 0, 0,  # index 1 is red
+                  255, 255, 0,  # index 2 is yellow
+                  255, 153, 0,  # index 3 is orange
                   ]
     mask.putpalette(color_mode)
     mask.show()
@@ -121,7 +113,7 @@ class PennFudanDataset(data.Dataset):
         return len(self.imgs)
 
 
-def get_transforms(is_training=False):
+def get_transform(is_training=False):
     transforms = []
     # converts the image, a PIL image, into a PyTorch Tensor
     transforms.append(T.ToTensor())
@@ -134,8 +126,8 @@ def get_transforms(is_training=False):
 
 def main():
     visual_dataset()
-    dataset_train = PennFudanDataset(args.dataset, transforms=get_transforms(is_training=True))
-    dataset_test = PennFudanDataset(args.dataset, transforms=get_transforms(is_training=False))
+    dataset_train = PennFudanDataset(args.dataset, transforms=get_transform(is_training=True))
+    dataset_test = PennFudanDataset(args.dataset, transforms=get_transform(is_training=False))
 
 
     # split dataset to train and test

@@ -39,10 +39,12 @@ def visual_mask(masks, mask_threshold=0.5):
     mask = masks.squeeze(dim=1)
 
     # filter pixel to 0 or 1
-    one_mask = torch.ones_like(mask, device=device)
-    zero_mask = torch.zeros_like(mask, device=device)
-    mask = torch.where(mask >= mask_threshold, one_mask, mask)
-    mask = torch.where(mask < mask_threshold, zero_mask, mask)
+    # one_mask = torch.ones_like(mask, device=device)
+    # zero_mask = torch.zeros_like(mask, device=device)
+    # mask = torch.where(mask >= mask_threshold, one_mask, mask)
+    # mask = torch.where(mask < mask_threshold, zero_mask, mask)
+    mask = mask > mask_threshold
+    mask = mask.to(dtype=torch.int32)
 
     # assign label to instance mask
     mask_label = torch.range(1, mask.size()[0], device=device).view(mask.size()[0], 1, 1)
@@ -92,3 +94,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    a = torch.range(1, 2)
+

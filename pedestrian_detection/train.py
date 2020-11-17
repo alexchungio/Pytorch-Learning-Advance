@@ -34,7 +34,6 @@ def eval():
     pass
 
 
-
 def model_test():
 
     model = mask_rcnn(num_classes=2, pretrained=False)
@@ -65,17 +64,18 @@ def main():
 
     dataset_train = PennFudanDataset(args.dataset, transforms=get_transform(is_training=True))
     dataset_test = PennFudanDataset(args.dataset, transforms=get_transform(is_training=False))
-
+    #
     # split dataset to train and test
     indices = torch.randperm(len(dataset_train)).tolist()
     dataset_train = torch.utils.data.Subset(dataset_train, indices[:-50])
     dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
 
+    # define training and validation data loaders
     train_loader = torch.utils.data.DataLoader(
         dataset_train, batch_size=2, shuffle=True, num_workers=4, collate_fn=utils.collate_fn)
 
     test_loader = torch.utils.data.DataLoader(
-        dataset_train, batch_size=1, shuffle=False, num_workers=4, collate_fn=utils.collate_fn)
+        dataset_test, batch_size=1, shuffle=False, num_workers=4, collate_fn=utils.collate_fn)
 
 
     # get the model using our helper function
@@ -102,8 +102,10 @@ def main():
         # evaluate on the test dataset
         evaluate(model, data_loader=test_loader,  device=device)
 
+
     os.makedirs(os.path.dirname(args.checkpoint), exist_ok=True)
     torch.save(model.state_dict(), args.checkpoint)
+
 
 if __name__ == "__main__":
     main()

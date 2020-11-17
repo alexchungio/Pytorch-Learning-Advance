@@ -56,8 +56,8 @@ def faster_rcnn_mobilenetv2(num_classes):
     # be [0]. More generally, the backbone should return an
     # OrderedDict[Tensor], and in featmap_names you can choose which
     # feature maps to use.
-    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=[0],
-                                                    output_size=7,
+    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=['0'],
+                                                    output_size=[7],
                                                     sampling_ratio=2)
 
     # put the pieces together inside a FasterRCNN model
@@ -68,3 +68,11 @@ def faster_rcnn_mobilenetv2(num_classes):
 
 
     return model
+
+
+if __name__ == "__main__":
+
+    model = faster_rcnn_mobilenetv2(num_classes=2)
+
+    for name, param in model.named_parameters():
+        print(name, param.size())
