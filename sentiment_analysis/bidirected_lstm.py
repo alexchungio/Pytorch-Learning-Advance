@@ -9,12 +9,16 @@
 # @ Time       : 2020/12/14 下午2:09
 # @ Software   : PyCharm
 #-------------------------------------------------------
+
+import os
+
 import random
 import torch
 import torch.nn  as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim import lr_scheduler
+
 from torchtext import data, datasets
 from torchtext.vocab import GloVe
 import spacy
@@ -26,6 +30,9 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 RANDOM_SEED = 2020
 MAX_VOCAB_SIZE = 25000
 BATCH_SIZE = 128
+MODEL_PATH = './output/model.pth'
+
+
 torch.manual_seed(RANDOM_SEED)
 torch.backends.cudnn.deterministic = True
 
@@ -111,7 +118,7 @@ def train(model, data_loader, optimizer, criterion):
     pbar = tqdm(data_loader)
     for data in pbar:
         text = data.text[0].to(device)
-        text_length = data.text[1].to(device)
+        text_length = torch.LongTensor(data.text[1])
         label = data.label.to(device)
 
         pred = model(text, text_length)
@@ -146,7 +153,7 @@ def test(model, data_loader, criterion):
         pbar = tqdm(data_loader)
         for data in pbar:
             text = data.text[0].to(device)
-            text_length = data.text[1].to(device)
+            text_length = torch.LongTensor(data.text[1])
             label = data.label.to(device)
             pred = model(text, text_length)
             loss = criterion(pred, label.unsqueeze(dim=1))
@@ -162,21 +169,6 @@ def test(model, data_loader, criterion):
             pbar.set_description('test => acc {} loss {}'.format(batch_acc / batch_size, batch_loss / batch_size))
 
     return sum(epoch_acc) / num_samples, sum(epoch_loss) / num_samples
-
-
-
-def predict(model, sentence):
-    model.eval()
-    tokenized = [token.text for token in nlp.tokenizer(sentence)]
-    token_index = [TEXT.vocab.itos[token] for token in tokenized]
-    length = len(token_index)
-
-    text_tensor = torch.LongTensor(token_index).unsqueeze(dim=0).to(model.device)
-    length_tensor = torch.LongTensor(length).to(model.device)
-
-    pred = torch.sigmoid(model(text_tensor, length_tensor))
-
-    return pred
 
 
 
@@ -234,7 +226,6 @@ def main():
     UNK_INDEX = TEXT.vocab.stoi[TEXT.unk_token]
 
 
-
     model = BiLSTM(vocab_size=VOCAB_SIZE, embedding_dim=EMBEDDING_DIM, hidden_size=HIDDEN_SIZE, output_size=OUTPUT_SIZE,
                    num_layer=NUM_LAYER, bidirectional=BIDIRECTIONAL, dropout=DROPOUT, pad_index=PAD_INDEX)
 
@@ -265,6 +256,24 @@ def main():
         print('Train => acc {:.3f}, loss {:4f}'.format(train_acc, train_loss))
         print('Eval => acc {:.3f}, loss {:4f}'.format(test_acc, test_loss))
         scheduler.step(epoch=epoch)
+
+
+    state = {
+        'vocab_size': VOCAB_SIZE,
+        'embedding_dim': EMBEDDING_DIM,
+        'hidden_size': HIDDEN_SIZE,
+        'output_size': OUTPUT_SIZE,
+        'num_layer': NUM_LAYER,
+        'bidirectional': BIDIRECTIONAL,
+        'dropout': DROPOUT,
+        'state_dict': model.state_dict(),
+        'pad_index': PAD_INDEX,
+        'unk_index': UNK_INDEX,
+        'text_vocab': TEXT.vocab.stoi,
+    }
+
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    torch.save(state, MODEL_PATH)
 
 
 if __name__ == "__main__":
