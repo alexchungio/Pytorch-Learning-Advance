@@ -81,6 +81,7 @@ class BiLSTM(nn.Module):
         # embedded => [seq_len, batch_size, embedding_dim]
         embedded = self.embedding(text)
         embedded = self.dropout(embedded)
+        text_length = text_length.cpu()  # compatible torch=1.7.0
         # pack sequence
         packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, text_length, batch_first=False, enforce_sorted=False)
 
@@ -118,7 +119,7 @@ def train(model, data_loader, optimizer, criterion):
     pbar = tqdm(data_loader)
     for data in pbar:
         text = data.text[0].to(device)
-        text_length = torch.LongTensor(data.text[1])
+        text_length = data.text[1]
         label = data.label.to(device)
 
         pred = model(text, text_length)
@@ -138,9 +139,7 @@ def train(model, data_loader, optimizer, criterion):
 
         pbar.set_description('train => acc {} loss {}'.format(batch_acc / batch_size, batch_loss / batch_size))
 
-
     return sum(epoch_acc) / num_samples, sum(epoch_loss) / num_samples
-
 
 
 def test(model, data_loader, criterion):
@@ -153,7 +152,7 @@ def test(model, data_loader, criterion):
         pbar = tqdm(data_loader)
         for data in pbar:
             text = data.text[0].to(device)
-            text_length = torch.LongTensor(data.text[1])
+            text_length = data.text[1]
             label = data.label.to(device)
             pred = model(text, text_length)
             loss = criterion(pred, label.unsqueeze(dim=1))
