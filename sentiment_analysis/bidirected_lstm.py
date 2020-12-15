@@ -13,8 +13,12 @@ import random
 import torch
 import torch.nn  as nn
 import torch.nn.functional as F
+import torch.optim as optim
+from torch.optim import lr_scheduler
 from torchtext import data, datasets
 from torchtext.vocab import GloVe
+import spacy
+from tqdm import tqdm
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -37,6 +41,144 @@ torch.backends.cudnn.deterministic = True
 # TEXT = data.Field(tokenize='spacy', fix_length=1000)
 TEXT = data.Field(tokenize='spacy', include_lengths=True)
 LABEL = data.LabelField(sequential=False, dtype=torch.float32)
+nlp = spacy.load('en')
+
+class BiLSTM(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_size, output_size, num_layer, pad_index,
+                 bidirectional=False, dropout=0.5):
+        super(BiLSTM, self).__init__()
+
+        self.embedding = nn.Embedding(num_embeddings=vocab_size,
+                                      embedding_dim=embedding_dim,
+                                      padding_idx=pad_index)
+        self.lstm = nn.LSTM(input_size=embedding_dim,
+                            hidden_size=hidden_size,
+                            num_layers=num_layer,
+                            bidirectional=bidirectional,
+                            dropout=dropout)
+
+        if bidirectional:
+            self.fc = nn.Linear(hidden_size * 2, output_size)
+        else:
+            self.fc = nn.Linear(hidden_size, output_size)
+
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, text, text_length):
+        """
+
+        :param text: (seq_len, batch_size)
+        :param text_length:
+        :return:
+        """
+        # embedded => [seq_len, batch_size, embedding_dim]
+        embedded = self.embedding(text)
+        embedded = self.dropout(embedded)
+        # pack sequence
+        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, text_length, batch_first=False, enforce_sorted=False)
+
+        # lstm
+        # h_n => (num_direction * num_layers, batch_size, hidden_size)
+        # c_n => (num_direction * num_layers, batch_size, hidden_size)
+        packed_output, (h_n, c_n) = self.lstm(packed_embedded)
+
+        # unpacked sequence
+        output, output_length = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=False)
+
+        # hidden => (batch_size, hidden_size*num_direction)
+        hidden = torch.cat((h_n[-2, :, :], h_n[-1, :, :]), dim=1)
+        hidden = self.dropout(hidden)
+
+        out = self.fc(hidden)
+        return out
+
+
+def binary_accuracy(pred, target, threshold=0.5):
+
+    preds = torch.sigmoid(pred) > threshold
+
+    correct = (preds==target).float()
+
+    return correct.sum()
+
+def train(model, data_loader, optimizer, criterion):
+    model.train()
+
+    epoch_loss = []
+    epoch_acc = []
+    num_samples = 0
+
+    pbar = tqdm(data_loader)
+    for data in pbar:
+        text = data.text[0].to(device)
+        text_length = data.text[1].to(device)
+        label = data.label.to(device)
+
+        pred = model(text, text_length)
+        loss = criterion(pred, label.unsqueeze(dim=1))
+        # grad clearing
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        batch_loss = loss.item()
+        batch_acc = binary_accuracy(pred, label.unsqueeze(dim=1)).item()
+        batch_size = text.shape[1]
+
+        epoch_loss.append(batch_loss)
+        epoch_acc.append(batch_acc)
+        num_samples += batch_size # add batch size
+
+        pbar.set_description('train => acc {} loss {}'.format(batch_acc / batch_size, batch_loss / batch_size))
+
+
+    return sum(epoch_acc) / num_samples, sum(epoch_loss) / num_samples
+
+
+
+def test(model, data_loader, criterion):
+    model.eval()
+
+    epoch_loss = []
+    epoch_acc = []
+    num_samples = 0
+    with torch.no_grad():
+        pbar = tqdm(data_loader)
+        for data in pbar:
+            text = data.text[0].to(device)
+            text_length = data.text[1].to(device)
+            label = data.label.to(device)
+            pred = model(text, text_length)
+            loss = criterion(pred, label.unsqueeze(dim=1))
+
+            batch_loss = loss.item()
+            batch_acc = binary_accuracy(pred, label.unsqueeze(dim=1)).item()
+            batch_size = text.shape[1]
+
+            epoch_loss.append(batch_loss)
+            epoch_acc.append(batch_acc)
+            num_samples += batch_size  # add batch size
+
+            pbar.set_description('test => acc {} loss {}'.format(batch_acc / batch_size, batch_loss / batch_size))
+
+    return sum(epoch_acc) / num_samples, sum(epoch_loss) / num_samples
+
+
+
+def predict(model, sentence):
+    model.eval()
+    tokenized = [token.text for token in nlp.tokenizer(sentence)]
+    token_index = [TEXT.vocab.itos[token] for token in tokenized]
+    length = len(token_index)
+
+    text_tensor = torch.LongTensor(token_index).unsqueeze(dim=0).to(model.device)
+    length_tensor = torch.LongTensor(length).to(model.device)
+
+    pred = torch.sigmoid(model(text_tensor, length_tensor))
+
+    return pred
+
+
 
 def main():
     # -----------------get train, val and test data--------------------
@@ -72,7 +214,7 @@ def main():
 
     # generate dataloader
     train_iter = data.BucketIterator(train_data, batch_size=BATCH_SIZE, device=device, shuffle=True)
-    val_iter, test_iter = data.BucketIterator((val_data, test_data), batch_size=BATCH_SIZE, device=device,
+    val_iter, test_iter = data.BucketIterator.splits((val_data, test_data), batch_size=BATCH_SIZE, device=device,
                                               sort_within_batch=True)
 
     for batch_data in train_iter:
@@ -80,53 +222,49 @@ def main():
         print(batch_data.label)
         break
 
+    # construct model
+    VOCAB_SIZE = len(TEXT.vocab)
+    HIDDEN_SIZE = 256
+    OUTPUT_SIZE = 1
+    NUM_LAYER = 2
+    BIDIRECTIONAL = True
+    DROPOUT = 0.5
+    EMBEDDING_DIM = 100
+    PAD_INDEX = TEXT.vocab.stoi[TEXT.pad_token]
+    UNK_INDEX = TEXT.vocab.stoi[TEXT.unk_token]
 
-    class BiLSTM(nn.Module):
-        def __init__(self, vocab_size, embedding_dim, hidden_size, output_size, num_layer, pad_index,
-                     bidirectional=False, dropout=0.5):
-            super(BiLSTM, self).__init__()
 
-            self.embedding = nn.Embedding(num_embeddings=vocab_size,
-                                          embedding_dim=embedding_dim,
-                                          padding_idx=pad_index)
-            self.lstm = nn.LSTM(input_size=embedding_dim,
-                                hidden_size=hidden_size,
-                                bidirectional=bidirectional,
-                                dropout=dropout)
 
-            if bidirectional:
-                self.fc = nn.Linear(hidden_size * 2,  output_size)
-            else:
-                self.fc = nn.Linear(hidden_size, output_size)
+    model = BiLSTM(vocab_size=VOCAB_SIZE, embedding_dim=EMBEDDING_DIM, hidden_size=HIDDEN_SIZE, output_size=OUTPUT_SIZE,
+                   num_layer=NUM_LAYER, bidirectional=BIDIRECTIONAL, dropout=DROPOUT, pad_index=PAD_INDEX)
 
-            self.dropout = nn.Dropout(p=dropout)
 
-        def forward(self, text, text_length):
-            """
+    # load pretrained weight of embedding layer
+    pretrained_embedding = TEXT.vocab.vectors
+    print(pretrained_embedding)
+    pretrained_embedding[PAD_INDEX] = 0
+    pretrained_embedding[UNK_INDEX] = 0
+    print(pretrained_embedding)
 
-            :param text: (seq_len, batch_size)
-            :param text_length:
-            :return:
-            """
-            # embedded => [seq_len, batch_size, embedding_dim]
-            embedded = self.embedding(text)
-            embedded = self.dropout(embedded)
-            # pack sequence
-            packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, text_length, batch_first=False)
+    model.embedding.weight.data.copy_(pretrained_embedding)
 
-            # lstm
-            # h_n => (num_direction * num_layers, batch_size, hidden_size)
-            # c_n => (num_direction * num_layers, batch_size, hidden_size)
-            packed_output, (h_n, c_n)= self.lstm(packed_embedded)
+    # optimizer
+    optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-4)
+    # criterion
+    criterion = nn.BCEWithLogitsLoss()
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
-            # unpacked sequence
-            output, output_length = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=False)
+    model = model.to(device)
+    EPOCH = 10
 
-            # hidden => (batch_size, hidden_size*num_direction)
-            hidden = torch.cat((h_n[-2., :, :], h_n[-1., :, :]), dim=1)
-            hidden = self.dropout(hidden)
+    for epoch in range(EPOCH):
+        print('{}/{}'.format(epoch, EPOCH))
+        train_acc, train_loss = train(model, train_iter, optimizer=optimizer, criterion=criterion)
+        test_acc, test_loss = test(model, test_iter, criterion=criterion)
 
-            return hidden
+        print('Train => acc {:.3f}, loss {:4f}'.format(train_acc, train_loss))
+        print('Eval => acc {:.3f}, loss {:4f}'.format(test_acc, test_loss))
+        scheduler.step(epoch=epoch)
 
 
 if __name__ == "__main__":
