@@ -38,10 +38,13 @@ def predict(model, sentence, text_vocab):
 
     model.eval()
     tokenized = [token.text for token in nlp.tokenizer(sentence)]
-    token_index = [[text_vocab[token] for token in tokenized]]
+    token_index = [text_vocab[token] for token in tokenized]
     length = [len(token_index)]
 
+    # (seq_length, )
     text_tensor = torch.LongTensor(token_index).to(device)
+    # (seq_length) => (batch_size, seq_length) => (seq_length, batch_size)
+    text_tensor = text_tensor.unsqueeze(dim=0).transpose(1, 0)
     length_tensor = torch.LongTensor(length)
 
     pred = torch.sigmoid(model(text_tensor, length_tensor))
@@ -60,11 +63,11 @@ def main():
 
     sentence_0 = 'This film is terrible'
     pred_0 = predict(model, sentence_0, text_vocab=TEXT_VOCAB)
-    print(pred_0.item())
+    print(pred_0.item())  # 0.08206960558891296
 
-    sentence_1 = 'This film is great very good'
+    sentence_1 = 'This film is great'
     pred_1 = predict(model, sentence_1, text_vocab=TEXT_VOCAB)
-    print(pred_1.item())
+    print(pred_1.item())  # 0.08206960558891296
 
 
 if __name__ == "__main__":
