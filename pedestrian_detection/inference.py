@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #------------------------------------------------------
-# @ File       : test.py
+# @ File       : inference.py
 # @ Description:  https://www.rapidtables.com/web/color/RGB_Color.html
 # @ Author     : Alex Chung
 # @ Contact    : yonganzhong@outlook.com
@@ -10,8 +10,11 @@
 # @ Software   : PyCharm
 #-------------------------------------------------------
 
-from PIL import Image
+
 import torch
+from PIL import Image
+import numpy as np
+import matplotlib.pyplot as plt
 
 from pedestrian_detection.configs.args import args
 from pedestrian_detection.model.mask_rcnn import *
@@ -61,6 +64,39 @@ def visual_mask(masks, mask_threshold=0.5):
     return mask_image
 
 
+def inference(model, image, mask_threshold=0.5, device=None):
+
+    model.eval()
+
+    model.to(device)
+    with torch.no_grad():
+        prediction = model([image.to(device)])
+
+    # show raw image
+    # (0, 1) => (0, 255)
+    # (C, H, W) => (H, W, C)
+    rgb_image = Image.fromarray(image.mul(255).permute(1, 2, 0).byte().numpy())
+    # rgb_image.show()
+
+    # show predict result as mask image
+    masks = prediction[0]['masks']
+    mask_image = visual_mask(masks, mask_threshold)
+    # mask_image.show()
+
+    plt.figure(figsize=(8, 16))
+    fig, (ax0, ax1) = plt.subplots(1, 2)
+
+    ax0.set_title('raw image')
+    ax0.imshow(np.asarray(rgb_image))
+    ax0.axis('off')
+    ax1.set_title('mask image')
+    ax1.imshow(np.asarray(mask_image))
+    ax1.axis('off')
+
+    plt.show()
+
+
+
 def main():
     dataset_test = PennFudanDataset(args.dataset, transforms=get_transform(is_training=False))
 
@@ -72,25 +108,7 @@ def main():
     state_dict = torch.load(args.checkpoint)
     model.load_state_dict(state_dict)
 
-    model.to(device)
-
-    model.eval()
-    with torch.no_grad():
-        prediction = model([image.to(device)])
-
-    # show raw image
-    # (0, 1) => (0, 255)
-    # (C, H, W) => (H, W, C)
-    rgb_image = Image.fromarray(image.mul(255).permute(1, 2, 0).byte().numpy())
-    rgb_image.show()
-
-    # show predict result as mask image
-    mask_threshold = 0.5
-    masks = prediction[0]['masks']
-
-    mask_image = visual_mask(masks, mask_threshold)
-    mask_image.show()
-
+    inference(model, image, device=device)
 
 if __name__ == "__main__":
     main()
