@@ -83,8 +83,7 @@ def inference(model, image, mask_threshold=0.5, device=None):
     mask_image = visual_mask(masks, mask_threshold)
     # mask_image.show()
 
-    plt.figure(figsize=(8, 16))
-    fig, (ax0, ax1) = plt.subplots(1, 2)
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(16, 8))
 
     ax0.set_title('raw image')
     ax0.imshow(np.asarray(rgb_image))
