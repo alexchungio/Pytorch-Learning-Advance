@@ -29,6 +29,13 @@ pytorch learning advance
 * [visdom](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/visdom_mnist.py)
 * [tensorboard](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/tensorboard_cifar10.py)
 
+### Pedestrain detect
+* [train](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/pedestrian_detection/train.py)
+* [inference](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/pedestrian_detection/inference.py)
+![pedestrain demo](./Docs/pedestrain_demo.png)
+
+### Sentiment analysis with IMDB 
+* [Bi-LSTM](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/sentiment_analysis/bidirected_lstm.py)
 ## TODO
 
 ## Reference
