@@ -52,10 +52,7 @@ def main():
     max_size = max(h, w)
     pad_img = mmcv.impad(rgb_img, shape=(max_size, max_size), padding_mode='constant')
 
-
-    plt.imshow(pad_img)
-    plt.axis('off')
-    plt.show()
+    mmcv.imshow(mmcv.rgb2bgr(pad_img))
 
 
 
