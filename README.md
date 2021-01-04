@@ -40,6 +40,10 @@ pytorch learning advance
 
 ### Sentiment analysis with IMDB 
 * [Bi-LSTM](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/sentiment_analysis/bidirected_lstm.py)
+
+### mmdetection
+* [mmdet-demo](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/open_mmlab/mmdet_demo.py)
+
 ## TODO
 
 ## Reference
