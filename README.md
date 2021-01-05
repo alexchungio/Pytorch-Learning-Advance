@@ -44,6 +44,13 @@ pytorch learning advance
 ### mmdetection
 * [mmdet-demo](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/open_mmlab/mmdet_demo.py)
 
+### Apex
+```shell script
+  git clone https://github.com/NVIDIA/apex.git
+  cd apex
+  python setup.py install -v --cpp_ext --cuda_ext
+```
+
 ## TODO
 
 ## Reference
