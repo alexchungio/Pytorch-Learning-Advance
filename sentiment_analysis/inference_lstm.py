@@ -68,7 +68,7 @@ def main():
 
     sentence_1 = 'This film is great'
     pred_1 = predict(model, sentence_1, text_vocab=TEXT_VOCAB)
-    print(pred_1.item())  # 0.08206960558891296
+    print(pred_1.item())  # 0.8348122835159302
 
 
 if __name__ == "__main__":

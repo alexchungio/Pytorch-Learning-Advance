@@ -30,7 +30,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 RANDOM_SEED = 2020
 MAX_VOCAB_SIZE = 25000
 BATCH_SIZE = 128
-MODEL_PATH = './output/model.pth'
+MODEL_PATH = './output/bilstm_model.pth'
 
 
 torch.manual_seed(RANDOM_SEED)
@@ -94,7 +94,13 @@ class BiLSTMSentiment(nn.Module):
         output, output_length = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=False)
 
         # hidden => (batch_size, hidden_size*num_direction)
-        hidden = torch.cat((h_n[-2, :, :], h_n[-1, :, :]), dim=1)
+        # only use hidden state of last layer
+        if self.lstm.bidirectional:
+            hidden = torch.cat((h_n[-2, :, :], h_n[-1, :, :]), dim=1)
+
+        else:
+            hidden = h_n[-1:, :, :]
+
         hidden = self.dropout(hidden)
 
         out = self.fc(hidden)
@@ -178,11 +184,11 @@ def main():
     print(train_data.fileds)
     print(train_data.examples[0])
 
-    train_data, val_data = train_data.split(random_state = random.seed(RANDOM_SEED))
+    train_data, eval_data = train_data.split(random_state = random.seed(RANDOM_SEED))
 
     print('Number of train data {}'.format(len(train_data)))
-    print('Number of val data {}'.format(len(val_data)))
-    print('Number of val data {}'.format(len(test_data)))
+    print('Number of val data {}'.format(len(eval_data)))
+    print('Number of test data {}'.format(len(test_data)))
 
 
     # -------------------initial vocabulary with GLOVE model---------------------------
