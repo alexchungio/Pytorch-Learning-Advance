@@ -287,7 +287,7 @@ def main():
             best_eval_loss = eval_loss
 
     # test
-    test_loss, test_acc = evaluate(model, test_iterator, criterion)
+    test_acc, test_loss = evaluate(model, test_iterator, criterion)
     print('Test => acc {:.3f}, loss {:4f}'.format(test_acc, test_loss))
 
 
