@@ -258,7 +258,7 @@ def main():
 
     # ---------------------------------- config -------------------------------------------
 
-    optimizer = optim.Adam(params=model.parameters(), lr=0.01)
+    optimizer = optim.Adam(params=model.parameters(), lr=0.001)
     scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
     criterion = nn.BCEWithLogitsLoss()
 
@@ -272,9 +272,9 @@ def main():
         print('{}/{}'.format(epoch, NUM_EPOCH))
         train_acc, train_loss = train(model, train_iterator, optimizer=optimizer, criterion=criterion)
         eval_acc, eval_loss = evaluate(model, eval_iterator, criterion=criterion)
+        scheduler.step()
         print('Train => acc {:.3f}, loss {:4f}'.format(train_acc, train_loss))
         print('Eval => acc {:.3f}, loss {:4f}'.format(eval_acc, eval_loss))
-        scheduler.step(epoch=epoch)
 
         # save model
         state = {
