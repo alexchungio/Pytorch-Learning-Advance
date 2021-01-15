@@ -246,7 +246,7 @@ def main():
     model.embedding.weight.data.copy_(pretrained_embedding)
 
     # optimizer
-    optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-4)
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
     # criterion
     criterion = nn.BCEWithLogitsLoss()
     scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
