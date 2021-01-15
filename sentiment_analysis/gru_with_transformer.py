@@ -129,7 +129,7 @@ def binary_accuracy(pred, target, threshold=0.5):
 
     correct = (preds==target).float()
 
-    return correct.sum()
+    return correct.mean()
 
 
 def train(model, data_loader, optimizer, criterion):
@@ -137,7 +137,6 @@ def train(model, data_loader, optimizer, criterion):
 
     epoch_loss = []
     epoch_acc = []
-    num_samples = 0
 
     pbar = tqdm(data_loader)
     for data in pbar:
@@ -157,11 +156,10 @@ def train(model, data_loader, optimizer, criterion):
 
         epoch_loss.append(batch_loss)
         epoch_acc.append(batch_acc)
-        num_samples += batch_size # add batch size
 
-        pbar.set_description('train => acc {} loss {}'.format(batch_acc / batch_size, batch_loss / batch_size))
+        pbar.set_description('train => acc {} loss {}'.format(batch_acc, batch_loss))
 
-    return sum(epoch_acc) / num_samples, sum(epoch_loss) / num_samples
+    return sum(epoch_acc) / len(data_loader), sum(epoch_loss) / len(data_loader)
 
 
 def evaluate(model, data_loader, criterion):
@@ -169,7 +167,6 @@ def evaluate(model, data_loader, criterion):
 
     epoch_loss = []
     epoch_acc = []
-    num_samples = 0
     with torch.no_grad():
         pbar = tqdm(data_loader)
         for data in pbar:
@@ -185,19 +182,17 @@ def evaluate(model, data_loader, criterion):
 
             epoch_loss.append(batch_loss)
             epoch_acc.append(batch_acc)
-            num_samples += batch_size  # add batch size
 
-            pbar.set_description('eval => acc {} loss {}'.format(batch_acc / batch_size, batch_loss / batch_size))
+            pbar.set_description('eval => acc {} loss {}'.format(batch_acc, batch_loss))
 
-    return sum(epoch_acc) / num_samples, sum(epoch_loss) / num_samples
+    return sum(epoch_acc) / len(data_loader), sum(epoch_loss) / len(data_loader)
 
 
 def main():
 
     BATCH_SIZE = 32
     MODEL_PATH = './output/transformer_model.pth'
-    BEST_MODEL_PATH = './output/best_ransformer_model.pth'
-    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    BEST_MODEL_PATH = './output/transformer_model_best.pth'
     # ---------------------------define field-------------------------
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -285,6 +280,7 @@ def main():
             'dropout': DROPOUT,
             'state_dict': model.state_dict(),
         }
+        os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
         torch.save(state, MODEL_PATH)
         if eval_loss < best_eval_loss:
             shutil.copy(MODEL_PATH, BEST_MODEL_PATH)

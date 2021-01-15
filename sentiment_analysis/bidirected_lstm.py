@@ -23,6 +23,7 @@ from torchtext import data, datasets
 from torchtext.vocab import GloVe
 import spacy
 from tqdm import tqdm
+import shutil
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -30,8 +31,6 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 RANDOM_SEED = 2020
 MAX_VOCAB_SIZE = 25000
 BATCH_SIZE = 128
-MODEL_PATH = './output/bilstm_model.pth'
-
 
 torch.manual_seed(RANDOM_SEED)
 torch.backends.cudnn.deterministic = True
@@ -113,14 +112,13 @@ def binary_accuracy(pred, target, threshold=0.5):
 
     correct = (preds==target).float()
 
-    return correct.sum()
+    return correct.mean()
 
 def train(model, data_loader, optimizer, criterion):
     model.train()
 
     epoch_loss = []
     epoch_acc = []
-    num_samples = 0
 
     pbar = tqdm(data_loader)
     for data in pbar:
@@ -141,11 +139,10 @@ def train(model, data_loader, optimizer, criterion):
 
         epoch_loss.append(batch_loss)
         epoch_acc.append(batch_acc)
-        num_samples += batch_size # add batch size
 
-        pbar.set_description('train => acc {} loss {}'.format(batch_acc / batch_size, batch_loss / batch_size))
+        pbar.set_description('train => acc {} loss {}'.format(batch_acc, batch_loss))
 
-    return sum(epoch_acc) / num_samples, sum(epoch_loss) / num_samples
+    return sum(epoch_acc) / len(data_loader), sum(epoch_loss) / len(data_loader)
 
 
 def test(model, data_loader, criterion):
@@ -153,7 +150,6 @@ def test(model, data_loader, criterion):
 
     epoch_loss = []
     epoch_acc = []
-    num_samples = 0
     with torch.no_grad():
         pbar = tqdm(data_loader)
         for data in pbar:
@@ -165,16 +161,13 @@ def test(model, data_loader, criterion):
 
             batch_loss = loss.item()
             batch_acc = binary_accuracy(pred, label.unsqueeze(dim=1)).item()
-            batch_size = text.shape[1]
 
             epoch_loss.append(batch_loss)
             epoch_acc.append(batch_acc)
-            num_samples += batch_size  # add batch size
 
-            pbar.set_description('test => acc {} loss {}'.format(batch_acc / batch_size, batch_loss / batch_size))
+            pbar.set_description('eval() => acc {} loss {}'.format(batch_acc, batch_loss))
 
-    return sum(epoch_acc) / num_samples, sum(epoch_loss) / num_samples
-
+    return sum(epoch_acc) / len(data_loader), sum(epoch_loss) / len(data_loader)
 
 
 def main():
@@ -211,7 +204,7 @@ def main():
 
     # generate dataloader
     train_iter = data.BucketIterator(train_data, batch_size=BATCH_SIZE, device=device, shuffle=True)
-    val_iter, test_iter = data.BucketIterator.splits((val_data, test_data), batch_size=BATCH_SIZE, device=device,
+    eval_iter, test_iter = data.BucketIterator.splits((eval_data, test_data), batch_size=BATCH_SIZE, device=device,
                                               sort_within_batch=True)
 
     for batch_data in train_iter:
@@ -253,33 +246,42 @@ def main():
 
     model = model.to(device)
     EPOCH = 10
-
+    MODEL_PATH = './output/bilstm_model.pth'
+    BEST_MODEL_PATH = './output/bilstm_model_best.pth'
+    best_eval_loss = float('inf')
     for epoch in range(EPOCH):
         print('{}/{}'.format(epoch, EPOCH))
         train_acc, train_loss = train(model, train_iter, optimizer=optimizer, criterion=criterion)
-        test_acc, test_loss = test(model, test_iter, criterion=criterion)
+        eval_acc, eval_loss = test(model, eval_iter, criterion=criterion)
 
         print('Train => acc {:.3f}, loss {:4f}'.format(train_acc, train_loss))
-        print('Eval => acc {:.3f}, loss {:4f}'.format(test_acc, test_loss))
-        scheduler.step(epoch=epoch)
+        print('Eval => acc {:.3f}, loss {:4f}'.format(eval_acc, eval_loss))
+        scheduler.step()
+
+        # save model
+        state = {
+            'vocab_size': VOCAB_SIZE,
+            'embedding_dim': EMBEDDING_DIM,
+            'hidden_size': HIDDEN_SIZE,
+            'output_size': OUTPUT_SIZE,
+            'num_layer': NUM_LAYER,
+            'bidirectional': BIDIRECTIONAL,
+            'dropout': DROPOUT,
+            'state_dict': model.state_dict(),
+            'pad_index': PAD_INDEX,
+            'unk_index': UNK_INDEX,
+            'text_vocab': TEXT.vocab.stoi,
+        }
+
+        os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+        torch.save(state, MODEL_PATH)
+        if eval_loss < best_eval_loss:
+            shutil.copy(MODEL_PATH, BEST_MODEL_PATH)
+            best_eval_loss = eval_loss
 
 
-    state = {
-        'vocab_size': VOCAB_SIZE,
-        'embedding_dim': EMBEDDING_DIM,
-        'hidden_size': HIDDEN_SIZE,
-        'output_size': OUTPUT_SIZE,
-        'num_layer': NUM_LAYER,
-        'bidirectional': BIDIRECTIONAL,
-        'dropout': DROPOUT,
-        'state_dict': model.state_dict(),
-        'pad_index': PAD_INDEX,
-        'unk_index': UNK_INDEX,
-        'text_vocab': TEXT.vocab.stoi,
-    }
-
-    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-    torch.save(state, MODEL_PATH)
+    test_acc, test_loss = test(model, test_iter, criterion=criterion)
+    print('Eval => acc {:.3f}, loss {:4f}'.format(test_acc, test_loss))
 
 
 if __name__ == "__main__":
