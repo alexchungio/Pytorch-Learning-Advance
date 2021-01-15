@@ -13,7 +13,7 @@
 import torch
 import spacy
 
-from sentiment_analysis.bidirected_lstm import BiLSTM
+from sentiment_analysis.bidirected_lstm import BiLSTMSentiment
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -54,8 +54,9 @@ def predict(model, sentence, text_vocab):
 
 def main():
 
-    model = BiLSTM(vocab_size=VOCAB_SIZE, embedding_dim=EMBEDDING_DIM, hidden_size=HIDDEN_SIZE, output_size=OUTPUT_SIZE,
-                   num_layer=NUM_LAYER, bidirectional=BIDIRECTIONAL, dropout=DROPOUT, pad_index=PAD_INDEX)
+    model = BiLSTMSentiment(vocab_size=VOCAB_SIZE, embedding_dim=EMBEDDING_DIM, hidden_size=HIDDEN_SIZE,
+                            output_size=OUTPUT_SIZE, num_layer=NUM_LAYER, bidirectional=BIDIRECTIONAL,
+                            dropout=DROPOUT, pad_index=PAD_INDEX)
 
     # load trained model
     model.load_state_dict(state['state_dict'])

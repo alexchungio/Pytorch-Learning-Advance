@@ -50,10 +50,10 @@ TEXT = data.Field(tokenize='spacy', include_lengths=True)
 LABEL = data.LabelField(sequential=False, dtype=torch.float32)
 nlp = spacy.load('en')
 
-class BiLSTM(nn.Module):
+class BiLSTMSentiment(nn.Module):
     def __init__(self, vocab_size, embedding_dim, hidden_size, output_size, num_layer, pad_index,
                  bidirectional=False, dropout=0.5):
-        super(BiLSTM, self).__init__()
+        super(BiLSTMSentiment, self).__init__()
 
         self.embedding = nn.Embedding(num_embeddings=vocab_size,
                                       embedding_dim=embedding_dim,
@@ -209,8 +209,8 @@ def main():
                                               sort_within_batch=True)
 
     for batch_data in train_iter:
-        print(batch_data.text)
-        print(batch_data.label)
+        print(batch_data.text)  # text, text_length
+        print(batch_data.label) # label
         break
 
     # construct model
@@ -225,8 +225,9 @@ def main():
     UNK_INDEX = TEXT.vocab.stoi[TEXT.unk_token]
 
 
-    model = BiLSTM(vocab_size=VOCAB_SIZE, embedding_dim=EMBEDDING_DIM, hidden_size=HIDDEN_SIZE, output_size=OUTPUT_SIZE,
-                   num_layer=NUM_LAYER, bidirectional=BIDIRECTIONAL, dropout=DROPOUT, pad_index=PAD_INDEX)
+    model = BiLSTMSentiment(vocab_size=VOCAB_SIZE, embedding_dim=EMBEDDING_DIM, hidden_size=HIDDEN_SIZE,
+                            output_size=OUTPUT_SIZE, num_layer=NUM_LAYER, bidirectional=BIDIRECTIONAL,
+                            dropout=DROPOUT, pad_index=PAD_INDEX)
 
 
     # load pretrained weight of embedding layer
