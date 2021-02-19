@@ -104,6 +104,9 @@ eval => acc 0.96875 loss 0.14810435473918915: 100%|█████████�
   cd apex
   python setup.py install -v --cpp_ext --cuda_ext
 ```
+### warmup 
+
+* [warmup](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/optimizer_warmup.py)
 
 ## TODO
 
