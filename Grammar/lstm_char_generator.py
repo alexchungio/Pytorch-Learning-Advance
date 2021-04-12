@@ -25,6 +25,7 @@ import torch.nn.functional as F
 import Grammar.utils as d2l
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+
 class TextTokenizer(object):
     def __init__(self, text=None, max_vocab=None, filename=None):
         if filename is not None:

@@ -212,6 +212,7 @@ def main(mode):
 
         show_fashion_mnist(X[0:9], titles[0:9])
 
+
 if __name__ == "__main__":
     main(mode='train')
     main(mode='test')

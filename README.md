@@ -108,6 +108,9 @@ eval => acc 0.96875 loss 0.14810435473918915: 100%|█████████�
 
 * [warmup](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/optimizer_warmup.py)
 
+### swa
+* [swa](https://github.com/alexchungio/Pytorch-Learning-Advance/blob/master/Grammar/swa.py)
+
 ## TODO
 
 ## Reference
