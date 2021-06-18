@@ -64,7 +64,6 @@ def binary_cross_entropy_loss(input, target, weight=None, use_logit=False):
     return torch.mean(output)
 
 
-
 def main():
     torch.random.manual_seed(2020)
 
@@ -74,31 +73,32 @@ def main():
                                        [1, 1]], dtype=torch.float32)
     multi_class_target = torch.tensor([0, 1], dtype=torch.long)
 
-
-    # test nn.BCELoss
+    # -------------------------test nn.BCELoss-----------------------------
     m_0 = nn.Sigmoid()
 
     bce_criterion = nn.BCELoss(weight=weight)
+    bce_criterion_logit = nn.BCEWithLogitsLoss(weight)
     output_0 = bce_criterion(m_0(input), multi_label_target)
-    output_1 = binary_cross_entropy_loss(input, multi_label_target, weight=weight, use_logit=True)
+    output_1 = bce_criterion_logit(input, multi_label_target)
+    output_2 = binary_cross_entropy_loss(input, multi_label_target, weight=weight, use_logit=True)
     print(output_0)
     print(output_1)
-
-    # test nn.CrossEntropyLoss
-    ce_criterion = nn.CrossEntropyLoss(weight=weight, reduction='mean')
-    output_2 = ce_criterion(input, multi_class_target)
-    output_3 = cross_entropy_loss(input, multi_class_target, weight=weight, use_logit=True)
     print(output_2)
-    print(output_3)
 
-    # test nn.NLLLoss
+    # --------------------test nn.CrossEntropyLoss--------------------------
+    ce_criterion = nn.CrossEntropyLoss(weight=weight, reduction='mean')
+    output_3 = ce_criterion(input, multi_class_target)
+    output_4 = cross_entropy_loss(input, multi_class_target, weight=weight, use_logit=True)
+    print(output_3)
+    print(output_4)
+
+    # -----------------------test nn.NLLLoss---------------------------------
     logit_input = torch.log(F.softmax(input, dim=1))
     nll_criterion = nn.NLLLoss(weight=weight, reduction='mean')
-    output_4 = ce_criterion(logit_input, multi_class_target)
-
-    output_5 = cross_entropy_loss(logit_input, multi_class_target, weight=weight, use_logit=False)
-    print(output_4)
-    print(output_5)
+    output_6 = nll_criterion(logit_input, multi_class_target)
+    output_7 = cross_entropy_loss(logit_input, multi_class_target, weight=weight, use_logit=False)
+    print(output_6)
+    print(output_7)
 
 
 if __name__ == "__main__":
