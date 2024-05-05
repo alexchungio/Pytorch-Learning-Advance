@@ -26,7 +26,7 @@ class ConfusionMatrix(object):
                 [[0, 0, 0],  # class-0  [0][0] => 0*3+0 = 0
                  [0, 0, 0],  # class-1  [1][0] => 1*3+0 = 3
                  [0, 0, 0]]  # class-2  [2][0] => 2*3+0 = 6
-        target * 3 => [0, 0, 3, 6, 6, 3, 6, 3, 3]
+                target * 3 => [0, 0, 3, 6, 6, 3, 6, 3, 3]
         step 2: get intdex of predict label  at confusion matrix
                 [0, 0, 3, 6, 6, 3, 6, 3, 3] + [0, 0, 2, 2, 1, 1, 2, 1, 0]  => [0, 0, 5, 8, 7, 4, 8, 4, 3]
         step3: count the number of per index to generate confusion matrix
