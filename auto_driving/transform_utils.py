@@ -681,8 +681,8 @@ def back_project_pixel_to_lidar(coords, depth, K, D, trans_lidar2cam):
     """
 
     Args:
-        coords: (N, 2)
-        depth: (height, width)
+        coords: coord of pixel (N, 2)
+        depth: depth correspond to pixel (height, width)
         K: (3X3)
         D: (4,)
         T: (4X4)
