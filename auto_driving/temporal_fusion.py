@@ -153,7 +153,7 @@ class GridsampleDelta(nn.Module):
         return r.to(input_dtype)
 
 
-class GridsampleTorch(nn.Module):
+class GridsampleNorm(nn.Module):
     """
     grid_sample with pytorch, interface
     grid` has values outside the range of ``[-1, 1]``
@@ -161,7 +161,7 @@ class GridsampleTorch(nn.Module):
     def __init__(
             self, mode="bilinear", padding_mode="zeros", align_corners=False
     ):
-        super(GridsampleTorch, self).__init__()
+        super(GridsampleNorm, self).__init__()
 
         assert mode in (
             "bilinear",
@@ -357,7 +357,7 @@ class TemporalFusion(nn.Module):
         self.bev_size = bev_size
         self.grid_size = grid_size
         self.in_channels = in_channels
-        self.grid_sample_with_delta =grid_sample_with_delta
+        self.grid_sample_with_delta = grid_sample_with_delta
 
         encoder = nn.ModuleList()
         for i in range(num_encoder):
@@ -398,7 +398,7 @@ class TemporalFusion(nn.Module):
                 align_corners=align_corners
             )
         else:
-            self.grid_sample = GridsampleTorch(
+            self.grid_sample = GridsampleNorm(
                 mode=mode,
                 padding_mode=padding_mode,
                 align_corners=align_corners,
@@ -584,7 +584,7 @@ class TemporalFusion(nn.Module):
         bev_min_x, bev_max_x, bev_min_y, bev_max_y = self.get_min_max_coords(
             self.bev_size
         )
-
+        feat_hw = feat.shape[2:]
         wrap_r, wrap_t = self._get_matrix(meta, idx, bev_min_x, bev_min_y)
         wrap_r = torch.tensor(wrap_r).to(device=feat.device)
         wrap_t = torch.tensor(wrap_t).to(device=feat.device)
@@ -598,18 +598,29 @@ class TemporalFusion(nn.Module):
             u = new_coord[..., 1:2]
             v = new_coord[..., 0:1]
             new_coord = torch.cat([u, v], dim=-1)
-            new_coord = self.adjust_coord_grid(new_coord)
+            new_coord = self.adjust_coord_grid(new_coord, feat_size=feat_hw)
             new_coords.append(new_coord)
         new_coords = torch.cat(new_coords)
 
         return new_coords
 
-    def adjust_coord_grid(self, coords):
+    def adjust_coord_grid(self, coords, feat_size=None):
+        """
+        adjust coords for gridsample
+        Args:
+            coords: (N, grid_h, grid_w, 2)
+            feat_size: (feat_h, feat_w)
+
+        Returns:
+
+        """
+        # grid sample with delta coords
         if self.grid_sample_with_delta:
             coords_grid = coords + self.offset
+        # grid sample with norm coords
         else:
-            norm_grid_x = coords[:, :, :, 0] * 2 / (coords.shape[2] - 1) - 1
-            norm_grid_y = coords[:, :, :, 1] * 2 / (coords.shape[1] - 1) - 1
+            norm_grid_x = coords[:, :, :, 0] * 2 / (feat_size[1] - 1) - 1
+            norm_grid_y = coords[:, :, :, 1] * 2 / (feat_size[0] - 1) - 1
             coords_grid = torch.stack((norm_grid_x, norm_grid_y), dim=-1)
 
         return coords_grid
