@@ -1006,4 +1006,3 @@ if __name__ == "__main__":
         # import pdb;pdb.set_trace()
         visual_occ(occ_label=occ_label, pc_range=pc_range, voxel_size=voxel_size, mask_camera=mask_camera, fill_z=True,
                    predict_mode=predict_mode)
-解
