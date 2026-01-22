@@ -750,8 +750,18 @@ class GAddTemporalFusion(TemporalFusion):
 if __name__ == "__main__":
     import cv2
 
-    # bev coordinate origin: (back, right, down)
-    # ego coordinate origin: (front, left up)
+    # bev coordinate: origin -> rear axle, x -> front, y -> left, z -> up
+    # ego coordinate: origin -> rear axle, x -> front, y -> left, z -> up
+    # gt coordinate: origin -> (back, right, down), x -> front, y -> left, z -> up
+    # img coordinate: origin -> (up, left), u -> right, v -> down
+
+    """
+                                up z    x front (yaw=0)
+                                    ^   ^
+                                    |  /
+                                    | /
+                     left y <------ 0
+    """
 
     # x-y bev range
     bev_size = (10, 22, 10.4, 10.4, 0.2, 0.2)  # (m)
@@ -761,6 +771,7 @@ if __name__ == "__main__":
     z_range = (-1.3, 1.8, 0.4)  # (m)
 
     # bev coord correspond to coordinate origin of ego
+    # bev_coord: x -> front, y -> left, z -> up
     ori_x = int(bev_size[0] / (bev_size[0] + bev_size[1]) * grid_size[1])
     ori_y = int(bev_size[2] / (bev_size[2] + bev_size[3]) * grid_size[0])
 
@@ -789,6 +800,7 @@ if __name__ == "__main__":
     feat_prev = torch.zeros(1, 1, grid_size[1], grid_size[0])
     feat_prev[:, :, ori_x - 10: ori_x + 10, ori_y - 30: ori_y + 30] = 255
     img_feat_prev = feat_prev[0, 0, :, :].numpy().astype(np.uint8)
+    # bev_coord -> img_coord
     cv2.imwrite("feat_prev.png", img_feat_prev[::-1, ::-1])
 
     meta = dict(
@@ -802,8 +814,9 @@ if __name__ == "__main__":
     export_reference_points = fusion_model.export_reference_points(feats, meta)
     print(export_reference_points["prev_points"].size())
     new_feat = fusion_model._transform(feats[1:, ...], export_reference_points["prev_points"])
-
     img_feat_prv2cur = new_feat[0, 0, :, :].numpy().astype(np.uint8)
+
+    # bev_coord -> img_coord
     cv2.imwrite("feat_prev2cur.png", img_feat_prv2cur[::-1, ::-1])
 
 
