@@ -1,8 +1,10 @@
 
 import torch
+from torch import Tensor
 
 
-def compute_iou(bboxes1, bboxes2, mode='iou', eps=1e-6):
+
+def box_iou(bboxes1: Tensor, bboxes2: Tensor, mode='iou', eps=1e-6):
     """
     Calculate overlap between two set of bboxes.
     Args:
@@ -32,23 +34,9 @@ def compute_iou(bboxes1, bboxes2, mode='iou', eps=1e-6):
     assert (bboxes1.size(-1) == 4 or bboxes1.size(0) == 0)
     assert (bboxes2.size(-1) == 4 or bboxes2.size(0) == 0)
 
-    area1 = (bboxes1[..., 2] - bboxes1[..., 0]) * ( bboxes1[..., 3] - bboxes1[..., 1])  # (M, )
-    area2 = (bboxes2[..., 2] - bboxes2[..., 0]) * ( bboxes2[..., 3] - bboxes2[..., 1])  # (N, )
+    inter, union = _box_inter_union(bboxes1, bboxes2)
 
-    # compute inter
-    # left-top
-    lt = torch.max(bboxes1[:, None, :2],
-                   bboxes2[None, :, :2])  # [M, N, 2]
-    # right-bottom
-    rb = torch.min(bboxes1[:, None, 2:],
-                   bboxes2[None, :, 2:])  # [M, N 2]
-    wh = (rb - lt).clamp(min=0)  # (N, M, 2)
-
-    overlap = wh[..., 0] * wh[..., 1]  # (N, M)
-
-    union = area1[:, None] + area2[None, :] - overlap  # (M, N)
-
-    ious = overlap / (union + eps)
+    ious = inter / (union + eps)
 
     if mode == 'giou':
         enclosed_lt = torch.min(bboxes1[:, None, :2],
@@ -66,6 +54,38 @@ def compute_iou(bboxes1, bboxes2, mode='iou', eps=1e-6):
     return ious
 
 
+def _box_inter_union(boxes1: Tensor, boxes2: Tensor):
+
+    area1 = (boxes1[..., 2] - boxes1[..., 0]) * (boxes1[..., 3] - boxes1[..., 1])  # (M, )
+    area2 = (boxes2[..., 2] - boxes2[..., 0]) * (boxes2[..., 3] - boxes2[..., 1])  # (N, )
+
+    lt = torch.max(boxes1[:, None, :2], boxes2[None, :, :2])  # left-top [M, N, 2]
+    rb = torch.min(boxes1[:, None, 2:], boxes2[None, :, 2:])  # right-bottom[M, N 2]
+    wh = (rb - lt).clamp(min=0)  # (N, M, 2)
+
+    inter = wh[..., 0] * wh[..., 1]  # (N, M)
+
+    union = area1[:, None] + area2[None, :] - inter  # (M, N)
+
+    return inter, union
+
+
+def xywh_to_xyxy(boxes: torch.Tensor) -> torch.Tensor:
+    """
+
+    Args:
+        boxes:(N, 4), <cx, cy, w, h>
+
+    Returns:
+        (N, 4),<x1, y1, x2, y2>
+    """
+    x1 = boxes[:, 0] - boxes[:, 2] / 2
+    y1 = boxes[:, 1] - boxes[:, 3] / 2
+    x2 = boxes[:, 0] + boxes[:, 2] / 2
+    y2 = boxes[:, 1] + boxes[:, 3] / 2
+    return torch.stack([x1, y1, x2, y2], dim=1)
+
+
 if __name__ == "__main__":
 
     bboxes1 = torch.FloatTensor([[0, 0, 10, 10],
@@ -75,9 +95,9 @@ if __name__ == "__main__":
     bboxes2 = torch.FloatTensor([[0, 0, 10, 20],
                                 [10, 20, 20, 30]])
 
-    iou = compute_iou(bboxes1, bboxes2, mode='iou')
+    iou = box_iou(bboxes1, bboxes2, mode='iou')
     print(iou)
-    giou = compute_iou(bboxes1, bboxes2, mode='giou')
+    giou = box_iou(bboxes1, bboxes2, mode='giou')
     print(giou)
 
 
