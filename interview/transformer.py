@@ -135,22 +135,92 @@ class MultiHeadSelfAttention(nn.Module):
         return output
 
 
+class MultiHeadAttention(nn.Module):
+    def __init__(self, embed_dim, num_head=8):
+        super().__init__()
+        assert embed_dim % num_head == 0
+
+        self.embed_dim = embed_dim
+        self.num_head = num_head
+        self.head_dim = embed_dim // num_head
+
+        # q k v projection
+        self.q_proj = nn.Linear(embed_dim, embed_dim)
+        self.k_proj = nn.Linear(embed_dim, embed_dim)
+        self.v_proj = nn.Linear(embed_dim, embed_dim)
+
+        # out projection
+        self.out_proj = nn.Linear(embed_dim, embed_dim)
+
+    def forward(self, query, key, value, attn_mask=None):
+        batch_size, len_seq_q, _ = query.shape
+        _, len_seq_k, _ = key.shape
+
+        # projection
+        Q = self.q_proj(query)
+        K = self.k_proj(key)
+        V = self.v_proj(value)
+
+        # (b, num_head, len_seq_q, head_dim)
+        Q = Q.view(batch_size, len_seq_q, self.num_head, self.head_dim).transpose(1, 2)
+        # # (b, num_head, len_seq_k, head_dim)
+        K = K.view(batch_size, len_seq_k, self.num_head, self.head_dim).transpose(1, 2)
+        V = V.view(batch_size, len_seq_k, self.num_head, self.head_dim).transpose(1, 2)
+
+        # cal attention score
+        # (b, num_head, len_seq_q, len_seq_k)
+        attn_score = Q @ K.transpose(-2, -1)
+        attn_score /= self.head_dim ** -0.5
+
+        if attn_mask is not None:
+            attn_score = attn_score.masked_fill(~attn_mask, float('-inf'))
+
+        # normalize
+        attn_score = torch.softmax(attn_score, -1)
+
+        # dot value
+        # (b, num_head, len_seq_q, head_dim)
+        out = torch.matmul(attn_score, V)
+
+        # combine
+        out = out.transpose(1, 2).contiguous().view(batch_size, -1, self.embed_dim)
+
+        out = self.out_proj(out)
+
+        return out, attn_score
+
+
 if __name__ == "__main__":
     batch_size = 2
-    seq_len = 10
+    len_seq_q = 10
+    len_seq_k = 20
     d_model = 512
     num_heads = 8
 
-    x = torch.randn(batch_size, seq_len, d_model)
+    # x = torch.randn(batch_size, seq_len, d_model)
 
-    # self-attention
-    self_attention = SelfAttention(d_model)
-    output = self_attention(x)
-    print(f'input shape: {x.shape}')
-    print(f'output shape: {output.shape}')
+    # # self-attention
+    # self_attention = SelfAttention(d_model)
+    # output = self_attention(x)
+    # print(f'input shape: {x.shape}')
+    # print(f'output shape: {output.shape}')
+    #
+    # # multi-head self-attention
+    # multi_self_attention = MultiHeadSelfAttention(d_model, num_heads)
+    # output_multi = multi_self_attention(x)
+    # print(f'input shape: {x.shape}')
+    # print(f'output shape: {output.shape}')
 
-    # multi-head self-attention
-    multi_self_attention = MultiHeadSelfAttention(d_model, num_heads)
-    output_multi = multi_self_attention(x)
-    print(f'input shape: {x.shape}')
-    print(f'output shape: {output.shape}')
+    q = torch.randn(batch_size, len_seq_q, d_model)
+    k = torch.randn(batch_size, len_seq_k, d_model)
+    v = torch.randn(batch_size, len_seq_k, d_model)
+
+    mha = MultiHeadAttention(
+        embed_dim=d_model,
+        num_head=num_heads,
+    )
+
+    output, weights = mha(q, k, v)
+    print(output.shape)
+    print(weights.shape)
+
