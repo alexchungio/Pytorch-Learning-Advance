@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch import Tensor
 import torchvision
-from interview.iou import box_iou
+from interview.bbox_iou import box_iou
 
 
 def nms(bboxes: torch.Tensor, scores: Tensor, iou_threshold: float):
